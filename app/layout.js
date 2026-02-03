@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "PedeSim",
-  description: "Sistema simples e rápido para pedidos e pagamento via PIX.",
+  title: "Meritus",
+  description: "Sistema de Ranking, Mérito e Evolução Contínua.",
 };
 
 export default function RootLayout({ children }) {
