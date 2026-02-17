@@ -1,25 +1,14 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata = {
   title: "Meritus",
-  description: "Sistema de Ranking, Mérito e Evolução Contínua.",
+  description: "Meritus — sistema de pontuação e ranking",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="pt-BR">
+      <body style={{ margin: 0, background: "#070a12", color: "#e5e7eb", fontFamily: "system-ui" }}>
         {children}
       </body>
     </html>

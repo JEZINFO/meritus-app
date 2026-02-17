@@ -1,22 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root { --radius: 16px; --transition: all 0.2s ease; }
-
-html, body {
-  padding: 0;
-  margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  background-color: #ffffff;
-  color: #111111;
-}
-
+/* Meritus globals (mínimo) */
 * { box-sizing: border-box; }
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.25); }
+html, body { height: 100%; }

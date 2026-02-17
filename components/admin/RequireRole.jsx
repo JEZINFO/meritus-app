@@ -6,7 +6,7 @@ import { getProfile } from "../../src/lib/profile";
 
 export default function RequireRole({ allow = [], children }) {
   const router = useRouter();
-  const [ok, setOk] = useState(false);
+  const [state, setState] = useState({ loading: true, ok: false });
 
   useEffect(() => {
     (async () => {
@@ -20,10 +20,10 @@ export default function RequireRole({ allow = [], children }) {
         router.push("/admin/unauthorized");
         return;
       }
-      setOk(true);
+      setState({ loading: false, ok: true });
     })();
   }, [allow, router]);
 
-  if (!ok) return null;
-  return children;
+  if (state.loading) return null;
+  return state.ok ? children : null;
 }

@@ -17,33 +17,21 @@ export default function AdminShell({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
-  const [error, setError] = useState(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-
-    const res = await getProfile();
-    if (!res.ok) {
-      setError(res.error || "Sem acesso. Faça login novamente.");
-      setLoading(false);
-      router.push("/login");
-      return;
-    }
-
-    setProfile(res.profile);
-    setLoading(false);
-  }
+  const [state, setState] = useState({ loading: true, profile: null });
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    (async () => {
+      const res = await getProfile();
+      if (!res.ok) {
+        router.push("/login");
+        return;
+      }
+      setState({ loading: false, profile: res.profile });
+    })();
+  }, [router]);
 
   const nav = useMemo(() => {
-    const role = profile?.perfil || "relatorio";
+    const role = state.profile?.perfil || "relatorio";
     const base = [
       { href: "/admin", label: "Dashboard", roles: ["admin", "fiscal", "relatorio"] },
       { href: "/admin/lancamentos", label: "Lançamentos", roles: ["admin", "fiscal"] },
@@ -59,18 +47,15 @@ export default function AdminShell({ children }) {
       { href: "/admin/cadastros/organizacao", label: "Organização", roles: ["admin"] },
     ];
     return { base, cad, role };
-  }, [profile]);
+  }, [state.profile]);
 
-  if (loading) return <Spinner />;
+  if (state.loading) return <Spinner />;
 
   return (
     <div className="min-h-screen bg-white">
-      <AdminHeader profile={profile} nav={nav} />
+      <AdminHeader profile={state.profile} nav={nav} />
       <main className="mx-auto max-w-6xl px-4 py-6">
         <div className="mb-4 text-xs text-black/50">{pathname?.split("/").filter(Boolean).join(" / ")}</div>
-        {error ? (
-          <div className="rounded-2xl border border-black/10 bg-white p-4 text-sm text-red-600">{error}</div>
-        ) : null}
         {children}
       </main>
     </div>
