@@ -28,27 +28,58 @@ export default function RankingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programaId, periodoId]);
 
-  async function carregar() {
-    setLoading(true);
-    setErro(null);
+ async function carregar() {
+  setLoading(true);
+  setErro(null);
 
-    const { data, error } = await supabase
-      .from("vw_meritus_ranking_periodo")
-      .select("participante_id,total_pontos,qtd_lancamentos,grupo_id")
-      .eq("programa_id", programaId)
-      .eq("periodo_id", periodoId)
-      .order("total_pontos", { ascending: false });
+  // 1) ranking agregado
+  const { data: ranking, error: e1 } = await supabase
+    .from("vw_meritus_ranking_periodo")
+    .select("participante_id,total_pontos,qtd_lancamentos,grupo_id")
+    .eq("programa_id", programaId)
+    .eq("periodo_id", periodoId)
+    .order("total_pontos", { ascending: false });
 
-    if (error) {
-      setErro(error.message);
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-
-    setRows(data || []);
+  if (e1) {
+    setErro(e1.message);
+    setRows([]);
     setLoading(false);
+    return;
   }
+
+  if (!ranking || ranking.length === 0) {
+    setRows([]);
+    setLoading(false);
+    return;
+  }
+
+  // 2) buscar nomes dos participantes
+  const ids = ranking.map(r => r.participante_id);
+
+  const { data: participantes, error: e2 } = await supabase
+    .from("meritus_participantes")
+    .select("id,nome")
+    .in("id", ids);
+
+  if (e2) {
+    setErro(e2.message);
+    setRows([]);
+    setLoading(false);
+    return;
+  }
+
+  const map = {};
+  participantes.forEach(p => { map[p.id] = p.nome; });
+
+  // 3) junta tudo
+  const rowsFinal = ranking.map(r => ({
+    ...r,
+    nome: map[r.participante_id] || "—",
+  }));
+
+  setRows(rowsFinal);
+  setLoading(false);
+}
 
   return (
     <main style={{ padding: 24, maxWidth: 1000, margin: "0 auto", fontFamily: "system-ui" }}>
@@ -80,7 +111,7 @@ export default function RankingPage() {
             <thead>
               <tr>
                 <th style={th}>#</th>
-                <th style={th}>Participante (ID)</th>
+                <th style={th}>Participante</th>
                 <th style={th}>Pontos</th>
                 <th style={th}>Lançamentos</th>
               </tr>
@@ -89,7 +120,7 @@ export default function RankingPage() {
               {rows.map((r, idx) => (
                 <tr key={r.participante_id}>
                   <td style={td}>{idx + 1}</td>
-                  <td style={td}><code>{r.participante_id}</code></td>
+                  <td style={td}>{r.nome}</td>
                   <td style={td}>{Number(r.total_pontos || 0)}</td>
                   <td style={td}>{r.qtd_lancamentos}</td>
                 </tr>
