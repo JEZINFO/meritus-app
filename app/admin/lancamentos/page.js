@@ -20,8 +20,9 @@ export default function LancamentosPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [erro, setErro] = useState(null);
   const [user, setUser] = useState(null);
-  const [perfil, setPerfil] = useState(null); // admin | responsavel | leitura
+  const [perfil, setPerfil] = useState(null); // admin | fiscal | relatorio | responsavel | leitura
   const [usuarioRow, setUsuarioRow] = useState(null);
+  const [allowedGroupIds, setAllowedGroupIds] = useState([]); // fiscal/responsavel: grupos permitidos
 
   // responsive
   const [isMobile, setIsMobile] = useState(false);
@@ -111,6 +112,23 @@ export default function LancamentosPage() {
       setUsuarioRow(usr);
       setPerfil(usr.perfil);
 
+      // Fiscal/Responsável: pode ter acesso a 1+ grupos via tabela meritus_usuario_grupos
+      if (usr.perfil === "fiscal") {
+        const { data: ug, error: ugErr } = await supabase
+          .from("meritus_usuario_grupos")
+          .select("grupo_id")
+          .eq("usuario_id", usr.id);
+
+        if (ugErr) {
+          setErro(ugErr.message);
+          setAuthLoading(false);
+          return;
+        }
+        setAllowedGroupIds((ug || []).map((x) => x.grupo_id).filter(Boolean));
+      } else {
+        setAllowedGroupIds([]);
+      }
+
       await carregarProgramasESelecionarDefault(usr);
 
       setAuthLoading(false);
@@ -170,7 +188,7 @@ export default function LancamentosPage() {
         return first;
       })();
 
-      const periodosReq = supabase
+      let periodosReq = supabase
         .from("meritus_periodos")
         .select("id,rotulo,inicio,fim,status")
         .eq("programa_id", programaId)
@@ -179,13 +197,20 @@ export default function LancamentosPage() {
         // segurança: caso seu programa tenha muitos períodos, mantenha um teto alto
         .limit(500);
 
+      if (perfil === "fiscal") {
+        periodosReq = periodosReq.eq("status", "aberto");
+      }
+
+
       const gruposReq =
-        perfil === "responsavel" && usuarioRow.grupo_id
+        (perfil === "fiscal" || perfil === "fiscal") && (allowedGroupIds?.length || usuarioRow?.grupo_id)
           ? supabase
               .from("meritus_grupos")
               .select("id,nome,ativo,programa_id")
-              .eq("id", usuarioRow.grupo_id)
-              .maybeSingle()
+              .eq("programa_id", programaId)
+              .eq("ativo", true)
+              .in("id", (allowedGroupIds && allowedGroupIds.length > 0) ? allowedGroupIds : [usuarioRow.grupo_id])
+              .order("nome", { ascending: true })
           : supabase
               .from("meritus_grupos")
               .select("id,nome,ativo,programa_id")
@@ -193,14 +218,14 @@ export default function LancamentosPage() {
               .eq("ativo", true)
               .order("nome", { ascending: true });
 
-      const [crRes, peRes, grRes] = await Promise.all([criteriosReq, periodosReq, gruposReq]);
+const [crRes, peRes, grRes] = await Promise.all([criteriosReq, periodosReq, gruposReq]);
 
       let errAgg = null;
       if (crRes.error) errAgg = crRes.error.message;
       if (peRes.error) errAgg = errAgg ? errAgg + " | " + peRes.error.message : peRes.error.message;
 
       let grList = [];
-      if (perfil === "responsavel" && usuarioRow.grupo_id) {
+      if (perfil === "fiscal" && usuarioRow.grupo_id) {
         if (grRes.error) errAgg = errAgg ? errAgg + " | " + grRes.error.message : grRes.error.message;
         grList = grRes.data ? [grRes.data] : [];
       } else {
@@ -215,11 +240,11 @@ export default function LancamentosPage() {
       setGrupos(grList);
 
       const gDefault =
-        perfil === "responsavel" && usuarioRow.grupo_id
-          ? usuarioRow.grupo_id
-          : perfil === "admin"
+        (perfil === "fiscal" || perfil === "fiscal") && (allowedGroupIds?.length || usuarioRow?.grupo_id)
+          ? ALL_GRUPOS // "Todos" = todos os grupos permitidos do usuário
+          : (perfil === "admin" || perfil === "relatorio" || perfil === "leitura")
           ? ALL_GRUPOS
-          : grList?.[0]?.id || "";
+          : grList?.[0]?.id || ALL_GRUPOS;
       setGrupoId(gDefault);
 
       const aberto = (peRes.data || []).find((p) => p.status === "aberto");
@@ -252,6 +277,22 @@ export default function LancamentosPage() {
       // Se Grupo != TODOS, filtra por grupo_id
       if (grupoId !== ALL_GRUPOS) {
         partQuery = partQuery.eq("grupo_id", grupoId);
+      } else {
+        // Fiscal/Responsável: "Todos" = todos os grupos permitidos
+        if (perfil === "fiscal" || perfil === "fiscal") {
+          if (allowedGroupIds && allowedGroupIds.length > 0) {
+            partQuery = partQuery.in("grupo_id", allowedGroupIds);
+          } else if (usuarioRow?.grupo_id) {
+            partQuery = partQuery.eq("grupo_id", usuarioRow.grupo_id);
+          } else {
+            // sem grupos atribuídos
+            setErro("Fiscal sem grupos atribuídos. Vincule grupos em meritus_usuario_grupos.");
+            setParticipantes([]);
+            setLancMap({});
+            setLoadingGrid(false);
+            return;
+          }
+        }
       }
 
       const { data: part, error: pErr } = await partQuery.order("nome", { ascending: true });
@@ -303,7 +344,7 @@ export default function LancamentosPage() {
   const podeEditar = useMemo(() => {
     if (!perfil) return false;
     if (perfil === "admin") return true;
-    if (perfil === "responsavel") return periodoSelecionado?.status === "aberto";
+    if (perfil === "fiscal") return periodoSelecionado?.status === "aberto";
     return false;
   }, [perfil, periodoSelecionado]);
 
@@ -429,7 +470,7 @@ export default function LancamentosPage() {
               <h1 style={S.h1}>Lançamentos</h1>
 
               <span style={S.pill}>
-                {perfil === "admin" ? "Admin" : perfil === "responsavel" ? "Responsável" : "Leitura"}
+                {perfil === "admin" ? "Admin" : perfil === "fiscal" ? "Responsável" : "Leitura"}
               </span>
 
               {periodoSelecionado ? (
@@ -512,7 +553,7 @@ export default function LancamentosPage() {
                   value={programaId}
                   onChange={(e) => setProgramaId(e.target.value)}
                   style={S.select}
-                  disabled={perfil === "responsavel" && !!usuarioRow?.programa_id}
+                  disabled={perfil === "fiscal" && !!usuarioRow?.programa_id}
                 >
                   {programas.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -528,9 +569,9 @@ export default function LancamentosPage() {
                   value={grupoId}
                   onChange={(e) => setGrupoId(e.target.value)}
                   style={S.select}
-                  disabled={perfil === "responsavel"}
+                  disabled={false}
                 >
-                  {perfil === "admin" ? <option value={ALL_GRUPOS}>Todos</option> : null}
+                  {(perfil === "admin" || perfil === "fiscal") ? <option value={ALL_GRUPOS}>Todos</option> : null}
                   {grupos.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.nome}
@@ -567,7 +608,7 @@ export default function LancamentosPage() {
             {!podeEditar ? (
               <div style={S.alertWarn}>
                 <b>Atenção:</b>{" "}
-                {perfil === "responsavel" && periodoSelecionado?.status !== "aberto"
+                {perfil === "fiscal" && periodoSelecionado?.status !== "aberto"
                   ? "Período fechado — sem edição."
                   : perfil === "leitura"
                   ? "Seu perfil é somente leitura."

@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "../../src/lib/profile";
+import { signOut } from "@/src/lib/profile";
+import { useProgram } from "./ProgramContext";
 
 function cn(...a) {
   return a.filter(Boolean).join(" ");
@@ -27,13 +28,13 @@ function NavItem({ href, label, active, onClick }) {
 export default function AdminHeader({ profile, nav }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { programas, programaId, setProgramaId, loadingProgramas } = useProgram();
 
   const [openMobile, setOpenMobile] = useState(false);
   const [openCad, setOpenCad] = useState(false);
   const [openUser, setOpenUser] = useState(false);
 
   const role = nav?.role || profile?.perfil || "relatorio";
-
   const baseItems = useMemo(() => (nav?.base || []).filter((i) => i.roles.includes(role)), [nav, role]);
   const cadItems = useMemo(() => (nav?.cad || []).filter((i) => i.roles.includes(role)), [nav, role]);
 
@@ -50,127 +51,155 @@ export default function AdminHeader({ profile, nav }) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
-        <Link href="/admin" onClick={closeAll} className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-2xl bg-black text-white flex items-center justify-center font-semibold">
-            M
+      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/admin" className="font-semibold tracking-tight" onClick={closeAll}>
+            Meritus
+          </Link>
+
+          <div className="hidden md:flex items-center gap-1">
+            {baseItems.map((i) => (
+              <NavItem key={i.href} href={i.href} label={i.label} active={pathname === i.href} onClick={closeAll} />
+            ))}
+
+            {cadItems.length ? (
+              <div className="relative">
+                <button
+                  onClick={() => setOpenCad((s) => !s)}
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-sm transition",
+                    openCad ? "bg-black text-white" : "text-black/70 hover:bg-black/5 hover:text-black"
+                  )}
+                >
+                  Cadastros
+                </button>
+                {openCad ? (
+                  <div className="absolute left-0 mt-2 w-56 rounded-2xl border border-black/10 bg-white shadow-lg p-2">
+                    {cadItems.map((i) => (
+                      <Link
+                        key={i.href}
+                        href={i.href}
+                        onClick={closeAll}
+                        className="block rounded-xl px-3 py-2 text-sm text-black/70 hover:bg-black/5 hover:text-black"
+                      >
+                        {i.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-          <div className="leading-tight">
-            <div className="text-sm font-semibold">Meritus</div>
-            <div className="text-[11px] text-black/50">
-              {profile?.org_nome || "Organização"} • {role}
-            </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Programa selector */}
+          <div className="hidden md:flex items-center gap-2">
+            <span className="text-xs text-black/50">Programa</span>
+            <select
+              className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm"
+              value={programaId || ""}
+              onChange={(e) => setProgramaId(e.target.value)}
+              disabled={loadingProgramas || (programas || []).length === 0}
+            >
+              {(programas || []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
           </div>
-        </Link>
 
-        <nav className="ml-6 hidden md:flex items-center gap-1">
-          {baseItems.map((i) => (
-            <NavItem key={i.href} href={i.href} label={i.label} active={pathname === i.href} onClick={closeAll} />
-          ))}
-
-          {cadItems.length > 0 && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenCad((v) => !v)}
-                className={cn(
-                  "px-3 py-2 rounded-xl text-sm transition",
-                  pathname?.includes("/admin/cadastros")
-                    ? "bg-black text-white"
-                    : "text-black/70 hover:bg-black/5 hover:text-black"
-                )}
-              >
-                Cadastros ▾
-              </button>
-
-              {openCad && (
-                <div className="absolute mt-2 w-56 rounded-2xl border border-black/10 bg-white shadow-lg overflow-hidden">
-                  {cadItems.map((i) => (
-                    <NavItem
-                      key={i.href}
-                      href={i.href}
-                      label={i.label}
-                      active={pathname === i.href}
-                      onClick={closeAll}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2">
+          {/* user */}
           <div className="relative hidden md:block">
             <button
-              type="button"
-              onClick={() => setOpenUser((v) => !v)}
-              className="rounded-2xl border border-black/10 px-3 py-2 text-sm hover:bg-black/5"
+              onClick={() => setOpenUser((s) => !s)}
+              className={cn(
+                "px-3 py-2 rounded-xl text-sm transition border border-black/10",
+                openUser ? "bg-black text-white border-black" : "bg-white hover:bg-black/5"
+              )}
             >
-              {profile?.email || "Conta"} ▾
+              {profile?.perfil || "usuário"}
             </button>
-
-            {openUser && (
-              <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-black/10 bg-white shadow-lg overflow-hidden">
-                <div className="px-3 py-2 text-xs text-black/50 border-b border-black/10">
-                  Perfil: <span className="text-black/80">{role}</span>
+            {openUser ? (
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-black/10 bg-white shadow-lg p-2">
+                <div className="px-3 py-2">
+                  <div className="text-xs text-black/50">Perfil</div>
+                  <div className="text-sm font-semibold">{profile?.perfil || "—"}</div>
                 </div>
-                <button onClick={sair} className="w-full text-left px-3 py-2 text-sm hover:bg-black/5">
+                <div className="h-px bg-black/10 my-1" />
+                <button
+                  onClick={sair}
+                  className="w-full text-left rounded-xl px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
                   Sair
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
 
+          {/* Mobile */}
           <button
-            type="button"
-            className="md:hidden rounded-2xl border border-black/10 px-3 py-2 text-sm hover:bg-black/5"
-            onClick={() => setOpenMobile((v) => !v)}
+            className="md:hidden rounded-xl border border-black/10 px-3 py-2 text-sm"
+            onClick={() => setOpenMobile((s) => !s)}
           >
             Menu
           </button>
         </div>
       </div>
 
-      {openMobile && (
+      {openMobile ? (
         <div className="md:hidden border-t border-black/10 bg-white">
-          <div className="mx-auto max-w-6xl px-4 py-3 flex flex-col gap-2">
-            <div className="text-xs text-black/50">
-              {profile?.org_nome || "Organização"} • {role}
+          <div className="px-4 py-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-black/50">Programa</span>
+              <select
+                className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm"
+                value={programaId || ""}
+                onChange={(e) => setProgramaId(e.target.value)}
+                disabled={loadingProgramas || (programas || []).length === 0}
+              >
+                {(programas || []).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap gap-2">
               {baseItems.map((i) => (
                 <NavItem key={i.href} href={i.href} label={i.label} active={pathname === i.href} onClick={closeAll} />
               ))}
             </div>
 
-            {cadItems.length > 0 && (
+            {cadItems.length ? (
               <div className="rounded-2xl border border-black/10 p-2">
-                <div className="text-xs text-black/50 px-2 pb-1">Cadastros</div>
-                <div className="flex flex-col gap-1">
+                <div className="text-xs text-black/50 px-2 py-1">Cadastros</div>
+                <div className="grid gap-1">
                   {cadItems.map((i) => (
-                    <NavItem
+                    <Link
                       key={i.href}
                       href={i.href}
-                      label={i.label}
-                      active={pathname === i.href}
                       onClick={closeAll}
-                    />
+                      className="block rounded-xl px-3 py-2 text-sm text-black/70 hover:bg-black/5 hover:text-black"
+                    >
+                      {i.label}
+                    </Link>
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
             <button
               onClick={sair}
-              className="rounded-2xl border border-black/10 px-3 py-2 text-sm hover:bg-black/5 text-left"
+              className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
             >
               Sair
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </header>
   );
 }
