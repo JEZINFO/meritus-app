@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import RequireRole from "../../../components/admin/RequireRole";
-import { Card, PageTitle, Button, Input, Select } from "../../../components/admin/ui";
+import RequireRole from "@/components/admin/RequireRole";
+import { Card, PageTitle, Button, Input, Select } from "@/components/admin/ui";
 import { supabase } from "@/src/lib/supabase";
-import { useProgram } from "../../../components/admin/ProgramContext";
+import { useProgram } from "@/components/admin/ProgramContext";
 
 function iso(d) {
   if (!d) return "";
@@ -160,19 +160,33 @@ export default function AdminPeriodos() {
 
             <div>
               <div className="text-xs text-white/60 mb-1">Início</div>
-              <Input type="date" value={novo.inicio} onChange={(e) => setNovo((s) => ({ ...s, inicio: e.target.value }))} disabled={!programaId || loading} />
+              <Input
+                type="date"
+                value={novo.inicio}
+                onChange={(e) => setNovo((s) => ({ ...s, inicio: e.target.value }))}
+                disabled={!programaId || loading}
+              />
             </div>
 
             <div>
               <div className="text-xs text-white/60 mb-1">Fim</div>
-              <Input type="date" value={novo.fim} onChange={(e) => setNovo((s) => ({ ...s, fim: e.target.value }))} disabled={!programaId || loading} />
+              <Input
+                type="date"
+                value={novo.fim}
+                onChange={(e) => setNovo((s) => ({ ...s, fim: e.target.value }))}
+                disabled={!programaId || loading}
+              />
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-xs text-white/60">Status</span>
-              <Select value={novo.status} onChange={(e) => setNovo((s) => ({ ...s, status: e.target.value }))} disabled={!programaId || loading}>
+              <Select
+                value={novo.status}
+                onChange={(e) => setNovo((s) => ({ ...s, status: e.target.value }))}
+                disabled={!programaId || loading}
+              >
                 <option value="aberto">aberto</option>
                 <option value="fechado">fechado</option>
               </Select>
@@ -183,7 +197,7 @@ export default function AdminPeriodos() {
             </Button>
           </div>
 
-          {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
+          {erro ? <div className="text-sm text-red-500">{erro}</div> : null}
         </Card>
 
         <Card className="p-0 overflow-hidden">
@@ -198,7 +212,7 @@ export default function AdminPeriodos() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-black/5 text-white/60">
+                <tr className="bg-white/[0.03] text-white/60">
                   <th className="text-left px-5 py-3">Rótulo</th>
                   <th className="text-left px-5 py-3">Início</th>
                   <th className="text-left px-5 py-3">Fim</th>
@@ -211,7 +225,7 @@ export default function AdminPeriodos() {
                 {periodos.map((p) => {
                   const editing = editId === p.id;
                   return (
-                    <tr key={p.id} className="border-t border-black/5 hover:bg-black/[0.03]">
+                    <tr key={p.id} className="border-t border-white/10 hover:bg-white/[0.03]">
                       <td className="px-5 py-3">
                         {editing ? (
                           <Input value={edit.rotulo} onChange={(e) => setEdit((s) => ({ ...s, rotulo: e.target.value }))} />
@@ -239,7 +253,9 @@ export default function AdminPeriodos() {
                       <td className="px-5 py-3">
                         <span
                           className={`inline-flex items-center rounded-xl border px-3 py-1 text-xs font-semibold ${
-                            p.status === "aberto" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"
+                            p.status === "aberto"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
                           }`}
                         >
                           {p.status}
