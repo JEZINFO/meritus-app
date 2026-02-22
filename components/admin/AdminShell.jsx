@@ -91,7 +91,7 @@ export default function AdminShell({ children }) {
       { href: "/admin/cadastros/grupos", label: "Grupos", roles: ["admin"] },
       { href: "/admin/cadastros/criterios", label: "Critérios", roles: ["admin"] },
       { href: "/admin/cadastros/participantes", label: "Participantes", roles: ["admin"] },
-      { href: "/admin/periodos", label: "Períodos", roles: ["admin"] },
+      { href: "/admin/cadastros/periodos", label: "Períodos", roles: ["admin"] },
     ];
 
     return { base, cad, role };
