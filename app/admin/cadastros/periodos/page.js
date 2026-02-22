@@ -1,30 +1,51 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import RequireRole from "../../../components/admin/RequireRole";
-import { Card, PageTitle, Button, Input, Select } from "../../../components/admin/ui";
+import RequireRole from "@/components/admin/RequireRole";
+import { Card, PageTitle, Button, Input, Select } from "@/components/admin/ui";
 import { supabase } from "@/src/lib/supabase";
-import { useProgram } from "../../../components/admin/ProgramContext";
+import { useProgram } from "@/components/admin/ProgramContext";
 
+// ---------- helpers ----------
 function iso(d) {
   if (!d) return "";
   return String(d).slice(0, 10);
 }
+function safeStr(v) {
+  return String(v ?? "").trim();
+}
 
-export default function AdminPeriodos() {
-  const { programaId, programas } = useProgram();
+// ---------- page ----------
+export default function AdminCadastrosPeriodos() {
+  const program = (typeof useProgram === "function" ? useProgram() : {}) || {};
+  const programaId = program.programaId ?? null;
+  const programas = program.programas ?? [];
 
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(null);
 
   const [periodos, setPeriodos] = useState([]);
 
-  // form novo
-  const [novo, setNovo] = useState({ rotulo: "", inicio: "", fim: "", status: "aberto" });
+  // criação
+  const [novo, setNovo] = useState({
+    rotulo: "",
+    inicio: "",
+    fim: "",
+    status: "aberto",
+  });
 
-  // edição
+  // edição inline
   const [editId, setEditId] = useState(null);
-  const [edit, setEdit] = useState({ rotulo: "", inicio: "", fim: "", status: "fechado" });
+  const [edit, setEdit] = useState({
+    rotulo: "",
+    inicio: "",
+    fim: "",
+    status: "fechado",
+  });
+
+  const programaNome = useMemo(() => {
+    return (programas || []).find((p) => p.id === programaId)?.nome || "—";
+  }, [programas, programaId]);
 
   useEffect(() => {
     if (!programaId) return;
@@ -38,33 +59,43 @@ export default function AdminPeriodos() {
 
     const { data, error } = await supabase
       .from("meritus_periodos")
-      .select("id,rotulo,inicio,fim,status,criado_em")
+      .select("id, programa_id, rotulo, inicio, fim, status, criado_em")
       .eq("programa_id", programaId)
       .order("inicio", { ascending: false })
       .limit(500);
 
-    if (error) setErro(error.message);
+    if (error) {
+      setErro(error.message);
+      setPeriodos([]);
+      setLoading(false);
+      return;
+    }
+
     setPeriodos(data || []);
     setLoading(false);
   }
 
-  function startEdit(p) {
+  function iniciarEdicao(p) {
     setEditId(p.id);
-    setEdit({ rotulo: p.rotulo || "", inicio: iso(p.inicio), fim: iso(p.fim), status: p.status || "fechado" });
+    setEdit({
+      rotulo: p.rotulo || "",
+      inicio: iso(p.inicio),
+      fim: iso(p.fim),
+      status: p.status || "fechado",
+    });
   }
 
-  function cancelEdit() {
+  function cancelarEdicao() {
     setEditId(null);
     setEdit({ rotulo: "", inicio: "", fim: "", status: "fechado" });
   }
 
-  async function salvarNovo() {
-    if (!programaId) return;
+  async function criar() {
+    if (!programaId) return setErro("Selecione um programa.");
     setErro(null);
 
-    const rotulo = (novo.rotulo || "").trim();
+    const rotulo = safeStr(novo.rotulo);
     if (!rotulo) return setErro("Informe o rótulo do período.");
-
     if (!novo.inicio || !novo.fim) return setErro("Informe início e fim.");
 
     setLoading(true);
@@ -77,18 +108,22 @@ export default function AdminPeriodos() {
     };
 
     const { error } = await supabase.from("meritus_periodos").insert(payload);
-    if (error) setErro(error.message);
+    if (error) {
+      setErro(error.message);
+      setLoading(false);
+      return;
+    }
 
     setNovo({ rotulo: "", inicio: "", fim: "", status: "aberto" });
     await carregar();
     setLoading(false);
   }
 
-  async function salvarEdit() {
+  async function salvar() {
     if (!editId) return;
     setErro(null);
 
-    const rotulo = (edit.rotulo || "").trim();
+    const rotulo = safeStr(edit.rotulo);
     if (!rotulo) return setErro("Informe o rótulo do período.");
     if (!edit.inicio || !edit.fim) return setErro("Informe início e fim.");
 
@@ -98,36 +133,49 @@ export default function AdminPeriodos() {
       .update({ rotulo, inicio: edit.inicio, fim: edit.fim })
       .eq("id", editId);
 
-    if (error) setErro(error.message);
-    cancelEdit();
+    if (error) {
+      setErro(error.message);
+      setLoading(false);
+      return;
+    }
+
+    cancelarEdicao();
     await carregar();
     setLoading(false);
   }
 
-  async function setStatus(id, status) {
+  async function mudarStatus(id, status) {
     setErro(null);
     setLoading(true);
+
     const { error } = await supabase.from("meritus_periodos").update({ status }).eq("id", id);
-    if (error) setErro(error.message);
+    if (error) {
+      setErro(error.message);
+      setLoading(false);
+      return;
+    }
+
     await carregar();
     setLoading(false);
   }
 
   async function excluir(id) {
-    // MVP: delete físico. Se preferir soft delete, altere aqui.
-    if (!confirm("Excluir este período? Esta ação é irreversível.")) return;
+    const ok = confirm("Excluir este período? Esta ação é irreversível.");
+    if (!ok) return;
+
     setErro(null);
     setLoading(true);
     const { error } = await supabase.from("meritus_periodos").delete().eq("id", id);
-    if (error) setErro(error.message);
+
+    if (error) {
+      setErro(error.message);
+      setLoading(false);
+      return;
+    }
+
     await carregar();
     setLoading(false);
   }
-
-  const programaNome = useMemo(
-    () => (programas || []).find((p) => p.id === programaId)?.nome || "—",
-    [programas, programaId]
-  );
 
   return (
     <RequireRole allow={["admin"]}>
@@ -136,9 +184,11 @@ export default function AdminPeriodos() {
           title="Períodos"
           subtitle="Abra/feche semanas e edite datas. (Somente Admin)"
           right={
-            <Button variant="secondary" onClick={carregar} disabled={loading || !programaId}>
-              Recarregar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={carregar} disabled={loading || !programaId}>
+                Recarregar
+              </Button>
+            </div>
           }
         />
 
@@ -146,6 +196,12 @@ export default function AdminPeriodos() {
           <div className="text-sm text-white/70">
             Programa selecionado: <b>{programaNome}</b>
           </div>
+
+          {!programaId ? (
+            <div className="text-sm text-amber-200">
+              Selecione um programa no topo para visualizar/criar períodos.
+            </div>
+          ) : null}
 
           <div className="grid gap-3 md:grid-cols-4">
             <div className="md:col-span-2">
@@ -160,30 +216,44 @@ export default function AdminPeriodos() {
 
             <div>
               <div className="text-xs text-white/60 mb-1">Início</div>
-              <Input type="date" value={novo.inicio} onChange={(e) => setNovo((s) => ({ ...s, inicio: e.target.value }))} disabled={!programaId || loading} />
+              <Input
+                type="date"
+                value={novo.inicio}
+                onChange={(e) => setNovo((s) => ({ ...s, inicio: e.target.value }))}
+                disabled={!programaId || loading}
+              />
             </div>
 
             <div>
               <div className="text-xs text-white/60 mb-1">Fim</div>
-              <Input type="date" value={novo.fim} onChange={(e) => setNovo((s) => ({ ...s, fim: e.target.value }))} disabled={!programaId || loading} />
+              <Input
+                type="date"
+                value={novo.fim}
+                onChange={(e) => setNovo((s) => ({ ...s, fim: e.target.value }))}
+                disabled={!programaId || loading}
+              />
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-xs text-white/60">Status</span>
-              <Select value={novo.status} onChange={(e) => setNovo((s) => ({ ...s, status: e.target.value }))} disabled={!programaId || loading}>
+              <Select
+                value={novo.status}
+                onChange={(e) => setNovo((s) => ({ ...s, status: e.target.value }))}
+                disabled={!programaId || loading}
+              >
                 <option value="aberto">aberto</option>
                 <option value="fechado">fechado</option>
               </Select>
             </div>
 
-            <Button onClick={salvarNovo} disabled={!programaId || loading}>
+            <Button onClick={criar} disabled={!programaId || loading}>
               Criar período
             </Button>
           </div>
 
-          {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
+          {erro ? <div className="text-sm text-red-500">{erro}</div> : null}
         </Card>
 
         <Card className="p-0 overflow-hidden">
@@ -198,7 +268,7 @@ export default function AdminPeriodos() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-black/5 text-white/60">
+                <tr className="bg-white/[0.03] text-white/60">
                   <th className="text-left px-5 py-3">Rótulo</th>
                   <th className="text-left px-5 py-3">Início</th>
                   <th className="text-left px-5 py-3">Fim</th>
@@ -210,11 +280,15 @@ export default function AdminPeriodos() {
               <tbody>
                 {periodos.map((p) => {
                   const editing = editId === p.id;
+
                   return (
-                    <tr key={p.id} className="border-t border-black/5 hover:bg-black/[0.03]">
+                    <tr key={p.id} className="border-t border-white/10 hover:bg-white/[0.03]">
                       <td className="px-5 py-3">
                         {editing ? (
-                          <Input value={edit.rotulo} onChange={(e) => setEdit((s) => ({ ...s, rotulo: e.target.value }))} />
+                          <Input
+                            value={edit.rotulo}
+                            onChange={(e) => setEdit((s) => ({ ...s, rotulo: e.target.value }))}
+                          />
                         ) : (
                           <div className="font-semibold">{p.rotulo}</div>
                         )}
@@ -222,7 +296,11 @@ export default function AdminPeriodos() {
 
                       <td className="px-5 py-3">
                         {editing ? (
-                          <Input type="date" value={edit.inicio} onChange={(e) => setEdit((s) => ({ ...s, inicio: e.target.value }))} />
+                          <Input
+                            type="date"
+                            value={edit.inicio}
+                            onChange={(e) => setEdit((s) => ({ ...s, inicio: e.target.value }))}
+                          />
                         ) : (
                           <span className="text-white/70">{iso(p.inicio)}</span>
                         )}
@@ -230,7 +308,11 @@ export default function AdminPeriodos() {
 
                       <td className="px-5 py-3">
                         {editing ? (
-                          <Input type="date" value={edit.fim} onChange={(e) => setEdit((s) => ({ ...s, fim: e.target.value }))} />
+                          <Input
+                            type="date"
+                            value={edit.fim}
+                            onChange={(e) => setEdit((s) => ({ ...s, fim: e.target.value }))}
+                          />
                         ) : (
                           <span className="text-white/70">{iso(p.fim)}</span>
                         )}
@@ -239,7 +321,9 @@ export default function AdminPeriodos() {
                       <td className="px-5 py-3">
                         <span
                           className={`inline-flex items-center rounded-xl border px-3 py-1 text-xs font-semibold ${
-                            p.status === "aberto" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"
+                            p.status === "aberto"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
                           }`}
                         >
                           {p.status}
@@ -249,25 +333,29 @@ export default function AdminPeriodos() {
                       <td className="px-5 py-3 text-right">
                         {editing ? (
                           <div className="flex justify-end gap-2 flex-wrap">
-                            <Button onClick={salvarEdit} disabled={loading}>
+                            <Button onClick={salvar} disabled={loading}>
                               Salvar
                             </Button>
-                            <Button variant="secondary" onClick={cancelEdit} disabled={loading}>
+                            <Button variant="secondary" onClick={cancelarEdicao} disabled={loading}>
                               Cancelar
                             </Button>
                           </div>
                         ) : (
                           <div className="flex justify-end gap-2 flex-wrap">
-                            <Button variant="secondary" onClick={() => startEdit(p)} disabled={loading}>
+                            <Button variant="secondary" onClick={() => iniciarEdicao(p)} disabled={loading}>
                               Editar
                             </Button>
 
                             {p.status === "aberto" ? (
-                              <Button variant="secondary" onClick={() => setStatus(p.id, "fechado")} disabled={loading}>
+                              <Button
+                                variant="secondary"
+                                onClick={() => mudarStatus(p.id, "fechado")}
+                                disabled={loading}
+                              >
                                 Fechar
                               </Button>
                             ) : (
-                              <Button onClick={() => setStatus(p.id, "aberto")} disabled={loading}>
+                              <Button onClick={() => mudarStatus(p.id, "aberto")} disabled={loading}>
                                 Abrir
                               </Button>
                             )}
