@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import RequireRole from "../../../../components/admin/RequireRole";
-import { Card, PageTitle, Button, Input, Select } from "../../../../components/admin/ui";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import RequireRole from "@/components/admin/RequireRole";
+import { Card, PageTitle, Button, Input, Select } from "@/components/admin/ui";
 import { supabase } from "@/src/lib/supabase";
 import { getProfile } from "@/src/lib/profile";
 
@@ -13,17 +13,59 @@ export default function CadParticipantes() {
 
   const [grupos, setGrupos] = useState([]);
   const [grupoId, setGrupoId] = useState("__ALL__");
+  const [filtroNome, setFiltroNome] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(null);
   const [ok, setOk] = useState(null);
-  const [rows, setRows] = useState([]);
+
+  // dados brutos do banco (sem filtro client-side)
+  const [rowsRaw, setRowsRaw] = useState([]);
 
   const [novo, setNovo] = useState({ nome: "", ativo: true });
   const [editId, setEditId] = useState(null);
   const [edit, setEdit] = useState({ nome: "", ativo: true, grupo_id: "" });
 
-  const programaAtual = useMemo(() => programas.find((p) => p.id === programaId) || null, [programas, programaId]);
+  // para scroll/âncora do editor inline
+  const editAnchorRef = useRef(null);
+
+  const programaAtual = useMemo(
+    () => programas.find((p) => p.id === programaId) || null,
+    [programas, programaId]
+  );
+
+  const grupoMap = useMemo(() => {
+    const m = new Map();
+    (grupos || []).forEach((g) => m.set(g.id, g.nome));
+    return m;
+  }, [grupos]);
+
+  function norm(v) {
+    return String(v ?? "")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase()
+      .trim();
+  }
+
+
+  // Filtros defensivos (garante que os filtros funcionem mesmo se a query/rls/etc não aplicar)
+  const rows = useMemo(() => {
+    let out = rowsRaw || [];
+
+    // filtro por grupo
+    if (grupoId && grupoId !== "__ALL__") {
+      out = out.filter((r) => r.grupo_id === grupoId);
+    }
+
+    // filtro por nome (client-side, rápido e confiável)
+    const q = norm(filtroNome);
+    if (q) {
+      out = out.filter((r) => norm(r.nome).includes(q));
+    }
+
+    return out;
+  }, [rowsRaw, grupoId, filtroNome]);
 
   useEffect(() => {
     (async () => {
@@ -40,15 +82,18 @@ export default function CadParticipantes() {
 
   useEffect(() => {
     if (!programaId) return;
+    setFiltroNome("");
     carregarGrupos();
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programaId]);
 
+  // quando muda o filtro, não precisa bater no banco (usamos filtro client-side)
+  // mas deixamos a opção de recarregar manualmente via botão "Atualizar"
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!programaId) return;
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setOk(null);
+    setErro(null);
   }, [grupoId]);
 
   async function carregarProgramas() {
@@ -95,6 +140,7 @@ export default function CadParticipantes() {
       setGrupoId("__ALL__");
       return;
     }
+
     setGrupos(data || []);
     setGrupoId("__ALL__");
   }
@@ -104,18 +150,15 @@ export default function CadParticipantes() {
     setOk(null);
     setLoading(true);
 
-    let q = supabase
+    const { data, error } = await supabase
       .from("meritus_participantes")
       .select("id,nome,ativo,criado_em,grupo_id,programa_id")
       .eq("programa_id", programaId)
       .order("nome", { ascending: true })
       .limit(5000);
 
-    if (grupoId && grupoId !== "__ALL__") q = q.eq("grupo_id", grupoId);
-
-    const { data, error } = await q;
     if (error) setErro(error.message);
-    setRows(data || []);
+    setRowsRaw(data || []);
     setLoading(false);
   }
 
@@ -125,7 +168,12 @@ export default function CadParticipantes() {
 
     const nome = String(novo.nome || "").trim();
     if (!programaId) return setErro("Selecione um programa.");
-    const gId = (grupoId && grupoId !== "__ALL__") ? grupoId : (grupos[0]?.id || "");
+
+    const gId =
+      grupoId && grupoId !== "__ALL__"
+        ? grupoId
+        : grupos[0]?.id || "";
+
     if (!gId) return setErro("Cadastre um grupo antes.");
     if (!nome) return setErro("Informe o nome do participante.");
 
@@ -144,9 +192,21 @@ export default function CadParticipantes() {
   }
 
   function startEdit(r) {
+    setOk(null);
+    setErro(null);
+
     setEditId(r.id);
     setEdit({ nome: r.nome || "", ativo: !!r.ativo, grupo_id: r.grupo_id || "" });
+
+    // garante que o editor apareça abaixo da linha clicada (não no topo)
+    // e rola suavemente até ele
+    setTimeout(() => {
+      if (editAnchorRef.current) {
+        editAnchorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 50);
   }
+
   function cancelEdit() {
     setEditId(null);
     setEdit({ nome: "", ativo: true, grupo_id: "" });
@@ -181,72 +241,79 @@ export default function CadParticipantes() {
         <PageTitle title="Participantes" subtitle="Cadastro de participantes por Programa e Grupo (Meritus)." />
 
         <Card>
-          <div className="grid md:grid-cols-3 gap-3 items-end">
+          <div className="grid md:grid-cols-4 gap-3 items-end">
             <div>
               <label className="text-xs text-white/55">Programa</label>
-              <Select value={programaId} onChange={(e) => setProgramaId(e.target.value)}>
-                {programas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              <Select value={programaId} onChange={(e) => setProgramaId(e.target.value)} disabled={loading}>
+                {programas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
               </Select>
-              {!programaAtual ? <div className="mt-1 text-[11px] text-black/45">Cadastre um programa primeiro.</div> : null}
+              {!programaAtual ? (
+                <div className="mt-1 text-[11px] text-white/50">Cadastre um programa primeiro.</div>
+              ) : null}
             </div>
 
             <div>
               <label className="text-xs text-white/55">Grupo (filtro)</label>
-              <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+              <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)} disabled={loading || grupos.length === 0}>
                 <option value="__ALL__">Todos</option>
-                {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                {grupos.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nome}
+                  </option>
+                ))}
               </Select>
+              <div className="mt-1 text-[11px] text-white/45">
+                Mostrando: <b className="text-white/70">{rows.length}</b> participantes
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-white/55">Nome (filtro)</label>
+              <Input
+                value={filtroNome}
+                onChange={(e) => setFiltroNome(e.target.value)}
+                placeholder="Digite para localizar"
+                disabled={loading || !programaId}
+              />
+              <div className="mt-1 text-[11px] text-white/45">
+                Exibe nomes que contenham o texto (ignora acentos).
+              </div>
             </div>
 
             <div>
               <label className="text-xs text-white/55">Novo participante</label>
-              <Input value={novo.nome} onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))} placeholder="Nome" />
-              <div className="mt-2 flex items-center gap-3">
+              <Input
+                value={novo.nome}
+                onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))}
+                placeholder="Nome"
+                disabled={loading || !programaId}
+              />
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
                 <label className="text-sm text-white/70 flex items-center gap-2">
-                  <input type="checkbox" checked={!!novo.ativo} onChange={(e) => setNovo((s) => ({ ...s, ativo: e.target.checked }))} />
+                  <input
+                    type="checkbox"
+                    checked={!!novo.ativo}
+                    onChange={(e) => setNovo((s) => ({ ...s, ativo: e.target.checked }))}
+                  />
                   Ativo
                 </label>
-                <Button onClick={criar} disabled={loading || !programaId}>Criar</Button>
-                <Button variant="ghost" onClick={carregar} disabled={loading || !programaId}>Atualizar</Button>
+                <Button onClick={criar} disabled={loading || !programaId}>
+                  Criar
+                </Button>
+                <Button variant="ghost" onClick={carregar} disabled={loading || !programaId}>
+                  Atualizar
+                </Button>
               </div>
             </div>
           </div>
 
-          {erro ? <div className="mt-3 text-sm text-red-600">{erro}</div> : null}
-          {ok ? <div className="mt-3 text-sm text-emerald-700">{ok}</div> : null}
+          {erro ? <div className="mt-3 text-sm text-red-500">{erro}</div> : null}
+          {ok ? <div className="mt-3 text-sm text-emerald-300">{ok}</div> : null}
         </Card>
-
-        {editId ? (
-          <Card>
-            <div className="flex items-center justify-between gap-2">
-              <div className="font-semibold">Editar participante</div>
-              <Button variant="ghost" onClick={cancelEdit}>Fechar</Button>
-            </div>
-
-            <div className="mt-3 grid md:grid-cols-3 gap-3 items-end">
-              <div className="md:col-span-2">
-                <label className="text-xs text-white/55">Nome</label>
-                <Input value={edit.nome} onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))} />
-              </div>
-
-              <div>
-                <label className="text-xs text-white/55">Grupo</label>
-                <Select value={edit.grupo_id} onChange={(e) => setEdit((s) => ({ ...s, grupo_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-white/70 flex items-center gap-2">
-                  <input type="checkbox" checked={!!edit.ativo} onChange={(e) => setEdit((s) => ({ ...s, ativo: e.target.checked }))} />
-                  Ativo
-                </label>
-                <Button onClick={salvarEdit} disabled={loading}>Salvar</Button>
-              </div>
-            </div>
-          </Card>
-        ) : null}
 
         <Card>
           {loading ? (
@@ -257,26 +324,100 @@ export default function CadParticipantes() {
             <div className="text-sm text-white/60">Nenhum participante.</div>
           ) : (
             <div className="overflow-auto">
-              <table className="min-w-[820px] w-full text-sm">
+              <table className="min-w-[980px] w-full text-sm">
                 <thead>
-                  <tr className="text-left text-white/55 border-b">
+                  <tr className="text-left text-white/55 border-b border-white/10">
                     <th className="py-2 pr-3">Nome</th>
+                    <th className="py-2 pr-3">Grupo</th>
                     <th className="py-2 pr-3">Ativo</th>
                     <th className="py-2 pr-3">Criado</th>
                     <th className="py-2 pr-3 text-right">Ações</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id} className="border-b last:border-b-0">
-                      <td className="py-2 pr-3 font-medium">{r.nome}</td>
-                      <td className="py-2 pr-3">{r.ativo ? "Sim" : "Não"}</td>
-                      <td className="py-2 pr-3">{r.criado_em ? new Date(r.criado_em).toLocaleString("pt-BR") : ""}</td>
-                      <td className="py-2 pr-3 text-right">
-                        <Button variant="ghost" onClick={() => startEdit(r)}>Editar</Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.map((r) => {
+                    const isEditing = editId === r.id;
+                    const nomeGrupo = grupoMap.get(r.grupo_id) || "—";
+                    return (
+                      <Fragment key={r.id}>
+                        <tr key={r.id} className="border-b border-white/10 last:border-b-0">
+                          <td className="py-2 pr-3 font-medium">{r.nome}</td>
+                          <td className="py-2 pr-3 text-white/70">{nomeGrupo}</td>
+                          <td className="py-2 pr-3">{r.ativo ? "Sim" : "Não"}</td>
+                          <td className="py-2 pr-3">
+                            {r.criado_em ? new Date(r.criado_em).toLocaleString("pt-BR") : ""}
+                          </td>
+                          <td className="py-2 pr-3 text-right">
+                            <Button variant="ghost" onClick={() => startEdit(r)}>
+                              Editar
+                            </Button>
+                          </td>
+                        </tr>
+
+                        {isEditing ? (
+                          <tr className="border-b border-white/10 bg-white/[0.02]">
+                            <td colSpan={5} className="py-3">
+                              <div ref={editAnchorRef} />
+
+                              <div className="flex items-center justify-between gap-2 px-3">
+                                <div className="font-semibold">Editar participante</div>
+                                <Button variant="ghost" onClick={cancelEdit}>
+                                  Fechar
+                                </Button>
+                              </div>
+
+                              <div className="mt-3 grid md:grid-cols-3 gap-3 items-end px-3">
+                                <div className="md:col-span-2">
+                                  <label className="text-xs text-white/55">Nome</label>
+                                  <Input
+                                    value={edit.nome}
+                                    onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))}
+                                    disabled={loading}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="text-xs text-white/55">Grupo</label>
+                                  <Select
+                                    value={edit.grupo_id}
+                                    onChange={(e) => setEdit((s) => ({ ...s, grupo_id: e.target.value }))}
+                                    disabled={loading}
+                                  >
+                                    <option value="">Selecione</option>
+                                    {grupos.map((g) => (
+                                      <option key={g.id} value={g.id}>
+                                        {g.nome}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  <label className="text-sm text-white/70 flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!edit.ativo}
+                                      onChange={(e) => setEdit((s) => ({ ...s, ativo: e.target.checked }))}
+                                      disabled={loading}
+                                    />
+                                    Ativo
+                                  </label>
+
+                                  <Button onClick={salvarEdit} disabled={loading}>
+                                    Salvar
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {erro ? <div className="mt-3 px-3 text-sm text-red-500">{erro}</div> : null}
+                              {ok ? <div className="mt-3 px-3 text-sm text-emerald-300">{ok}</div> : null}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
