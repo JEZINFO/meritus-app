@@ -80,16 +80,18 @@ export default function AdminShell({ children }) {
       { href: "/admin/lancamentos", label: "Lançamentos", roles: ["admin", "fiscal"] },
       { href: "/admin/ranking", label: "Ranking", roles: ["admin", "relatorio"] },
       { href: "/admin/relatorios", label: "Relatórios", roles: ["admin", "relatorio"] },
-      { href: "/admin/periodos", label: "Períodos", roles: ["admin"] },
-    ];
+
+];
 
     const cad = [
       { href: "/admin/cadastros/organizacoes", label: "Organizações", roles: ["admin"] },
       { href: "/admin/cadastros/programas", label: "Programas", roles: ["admin"] },
       { href: "/admin/cadastros/usuarios", label: "Usuários", roles: ["admin"] },
+      { href: "/admin/cadastros/acessos-fiscais", label: "--Acessos Fiscal", roles: ["admin"] },
       { href: "/admin/cadastros/grupos", label: "Grupos", roles: ["admin"] },
       { href: "/admin/cadastros/criterios", label: "Critérios", roles: ["admin"] },
       { href: "/admin/cadastros/participantes", label: "Participantes", roles: ["admin"] },
+      { href: "/admin/cadastros/periodos", label: "Períodos", roles: ["admin"] },
     ];
 
     return { base, cad, role };

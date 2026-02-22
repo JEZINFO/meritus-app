@@ -1,336 +1,327 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import RequireRole from "../../../../components/admin/RequireRole";
-import { Card, PageTitle, Button, Input, Select } from "../../../../components/admin/ui";
+import RequireRole from "@/components/admin/RequireRole";
 import { supabase } from "@/src/lib/supabase";
-import { getProfile } from "@/src/lib/profile";
+import { PageTitle, Card, Button, Input, Select, Badge } from "@/components/admin/ui";
 
 const PERFIS = [
-  { v: "admin", t: "Admin" },
-  { v: "fiscal", t: "Fiscal" },
-  { v: "relatorio", t: "Relatório" },
+  { value: "admin", label: "Admin" },
+  { value: "fiscal", label: "Fiscal" },
+  { value: "relatorio", label: "Relatório" },
 ];
 
-export default function CadUsuarios() {
-  const [orgId, setOrgId] = useState("");
-  const [loading, setLoading] = useState(false);
+function fmtTs(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleString("pt-BR");
+}
+
+function pickNome(v) {
+  return String(v || "").trim();
+}
+
+export default function AdminUsuariosPage() {
+  const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
+  const [ok, setOk] = useState(null);
+
+  const [q, setQ] = useState("");
+  const [somentePendentes, setSomentePendentes] = useState(false);
 
   const [rows, setRows] = useState([]);
-  const [programas, setProgramas] = useState([]);
-  const [grupos, setGrupos] = useState([]);
 
-  const [novo, setNovo] = useState({ user_id: "", perfil: "relatorio", programa_id: "", grupo_id: "", ativo: true });
-
+  // edição
   const [editId, setEditId] = useState(null);
-  const [edit, setEdit] = useState({ user_id: "", perfil: "relatorio", programa_id: "", grupo_id: "", ativo: true });
+  const [editNome, setEditNome] = useState("");
+  const [editPerfil, setEditPerfil] = useState("fiscal");
+  const [editAtivo, setEditAtivo] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      const res = await getProfile();
-      if (res.ok) setOrgId(res.profile.organizacao_id);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!orgId) return;
-    carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId]);
+  const filtrados = useMemo(() => {
+    const qq = String(q || "").trim().toLowerCase();
+    let arr = rows;
+    if (somentePendentes) arr = arr.filter((r) => !r.ativo);
+    if (!qq) return arr;
+    return arr.filter((r) => {
+      const nm = String(r.nome || "").toLowerCase();
+      const em = String(r.email || "").toLowerCase();
+      return nm.includes(qq) || em.includes(qq);
+    });
+  }, [rows, q, somentePendentes]);
 
   async function carregar() {
-    setErro(null);
     setLoading(true);
+    setErro(null);
+    setOk(null);
 
-    const [uRes, pRes, gRes] = await Promise.all([
-      supabase
-        .from("meritus_usuarios")
-        .select("id,user_id,organizacao_id,perfil,programa_id,grupo_id,ativo,criado_em")
-        .eq("organizacao_id", orgId)
-        .order("criado_em", { ascending: false })
-        .limit(1000),
-      supabase
-        .from("meritus_programas")
-        .select("id,nome,ativo")
-        .eq("organizacao_id", orgId)
-        .order("nome", { ascending: true })
-        .limit(1000),
-      supabase
-        .from("grupos")
-        .select("id,nome,ativo,ordem")
-        .eq("organizacao_id", orgId)
-        .eq("ativo", true)
-        .order("ordem", { ascending: true })
-        .order("nome", { ascending: true })
-        .limit(2000),
-    ]);
+    const { data, error } = await supabase.rpc("admin_list_meritus_users");
+    if (error) {
+      setErro(error.message);
+      setLoading(false);
+      return;
+    }
 
-    if (uRes.error) setErro(uRes.error.message);
-    if (pRes.error) setErro((e) => (e ? e + " | " : "") + pRes.error.message);
-    if (gRes.error) setErro((e) => (e ? e + " | " : "") + gRes.error.message);
-
-    setRows(uRes.data || []);
-    setProgramas((pRes.data || []).filter((p) => p.ativo));
-    setGrupos(gRes.data || []);
-
+    setRows(data || []);
     setLoading(false);
   }
 
-  function startEdit(r) {
+  useEffect(() => {
+    carregar();
+  }, []);
+
+  function iniciarEdicao(r) {
+    setErro(null);
+    setOk(null);
     setEditId(r.id);
-    setEdit({
-      user_id: r.user_id || "",
-      perfil: r.perfil || "relatorio",
-      programa_id: r.programa_id || "",
-      grupo_id: r.grupo_id || "",
-      ativo: !!r.ativo,
-    });
+    setEditNome(pickNome(r.nome));
+    setEditPerfil(r.perfil || "fiscal");
+    setEditAtivo(!!r.ativo);
   }
-  function cancelEdit() {
+
+  function cancelarEdicao() {
     setEditId(null);
-    setEdit({ user_id: "", perfil: "relatorio", programa_id: "", grupo_id: "", ativo: true });
+    setEditNome("");
+    setEditPerfil("fiscal");
+    setEditAtivo(true);
   }
 
-  async function criar() {
-    if (!orgId) return;
+  async function salvarEdicao() {
     setErro(null);
-    const user_id = (novo.user_id || "").trim();
-    if (!user_id) return setErro("Informe o user_id (UUID do auth.users).");
+    setOk(null);
 
-    setLoading(true);
-    const payload = {
-      user_id,
-      organizacao_id: orgId,
-      perfil: novo.perfil,
-      programa_id: novo.programa_id || null,
-      grupo_id: novo.grupo_id || null,
-      ativo: true,
-    };
+    const nome = pickNome(editNome);
+    if (!nome) {
+      setErro("Informe o nome.");
+      return;
+    }
 
-    const { error } = await supabase.from("meritus_usuarios").insert(payload);
-    if (error) setErro(error.message);
+    // 1) Atualiza nome no auth.users (meta) via RPC (admin)
+    const { error: e1 } = await supabase.rpc("admin_set_meritus_user_nome", {
+      p_user: editId,
+      p_nome: nome,
+    });
 
-    setNovo({ user_id: "", perfil: "relatorio", programa_id: "", grupo_id: "", ativo: true });
-    await carregar();
-    setLoading(false);
-  }
+    if (e1) {
+      setErro(e1.message);
+      return;
+    }
 
-  async function salvar() {
-    if (!editId) return;
-    setErro(null);
-    const user_id = (edit.user_id || "").trim();
-    if (!user_id) return setErro("Informe o user_id.");
-
-    setLoading(true);
-    const { error } = await supabase
+    // 2) Atualiza perfil/ativo na tabela meritus_usuarios
+    const { error: e2 } = await supabase
       .from("meritus_usuarios")
-      .update({
-        user_id,
-        perfil: edit.perfil,
-        programa_id: edit.programa_id || null,
-        grupo_id: edit.grupo_id || null,
-        ativo: !!edit.ativo,
-      })
+      .update({ perfil: editPerfil, ativo: editAtivo })
       .eq("id", editId);
 
-    if (error) setErro(error.message);
-    cancelEdit();
+    if (e2) {
+      setErro(e2.message);
+      return;
+    }
+
+    setOk("Usuário atualizado.");
+    cancelarEdicao();
     await carregar();
-    setLoading(false);
   }
 
-  async function toggleAtivo(r) {
+  async function aprovarRapido(id) {
     setErro(null);
-    setLoading(true);
-    const { error } = await supabase.from("meritus_usuarios").update({ ativo: !r.ativo }).eq("id", r.id);
-    if (error) setErro(error.message);
+    setOk(null);
+    const { error } = await supabase.from("meritus_usuarios").update({ ativo: true }).eq("id", id);
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+    setOk("Usuário aprovado.");
     await carregar();
-    setLoading(false);
   }
 
-  const programaNome = useMemo(() => Object.fromEntries(programas.map((p) => [p.id, p.nome])), [programas]);
-  const grupoNome = useMemo(() => Object.fromEntries(grupos.map((g) => [g.id, g.nome])), [grupos]);
+  async function desativarRapido(id) {
+    setErro(null);
+    setOk(null);
+    const { error } = await supabase.from("meritus_usuarios").update({ ativo: false }).eq("id", id);
+    if (error) {
+      setErro(error.message);
+      return;
+    }
+    setOk("Usuário desativado.");
+    await carregar();
+  }
+
+
+async function excluirUsuario(r) {
+  const okConfirm = window.confirm(
+    `Excluir o usuário?\n\nNome: ${r.nome || ""}\nE-mail: ${r.email || ""}\n\nEssa ação remove o usuário do Meritus e do Supabase Auth.`
+  );
+  if (!okConfirm) return;
+
+  setErro(null);
+  setOk(null);
+
+  const res = await fetch("/api/meritus/admin/delete-user", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: r.id }),
+  });
+
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    setErro(payload?.error || "Falha ao excluir usuário.");
+    return;
+  }
+
+  setOk("Usuário excluído.");
+  if (editId === r.id) cancelarEdicao();
+  await carregar();
+}
 
   return (
     <RequireRole allow={["admin"]}>
       <div className="space-y-4">
         <PageTitle
-          title="Cadastros • Usuários"
-          subtitle="Vínculo do usuário do Supabase Auth (user_id) com perfil e escopo na organização."
-          right={
-            <Button variant="secondary" onClick={carregar} disabled={loading || !orgId}>
-              Recarregar
-            </Button>
-          }
+          title="Usuários"
+          subtitle="Aprovação e gerenciamento. Nome vem do Auth; permissões ficam no Meritus."
         />
 
-        <Card className="space-y-3">
-          <div className="text-xs text-black/60">
-            Dica: o <b>login/senha</b> é gerenciado no Supabase Auth. Aqui você controla <b>perfil</b> e acesso.
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="md:col-span-2">
-              <div className="text-xs text-black/60 mb-1">user_id (UUID)</div>
-              <Input value={novo.user_id} onChange={(e) => setNovo((s) => ({ ...s, user_id: e.target.value }))} placeholder="UUID do auth.users" />
+        <Card>
+          <div className="flex flex-col md:flex-row gap-2 md:items-end md:justify-between">
+            <div className="flex-1">
+              <label className="text-xs text-black/50">Buscar (nome ou e-mail)</label>
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Ex.: João ou joao@email.com"
+              />
             </div>
 
-            <div>
-              <div className="text-xs text-black/60 mb-1">Perfil</div>
-              <Select value={novo.perfil} onChange={(e) => setNovo((s) => ({ ...s, perfil: e.target.value }))}>
-                {PERFIS.map((p) => (
-                  <option key={p.v} value={p.v}>
-                    {p.t}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <div className="text-xs text-black/60 mb-1">Programa (opcional)</div>
-              <Select value={novo.programa_id} onChange={(e) => setNovo((s) => ({ ...s, programa_id: e.target.value }))}>
-                <option value="">(todos)</option>
-                {programas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </Select>
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-black/70 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={somentePendentes}
+                  onChange={(e) => setSomentePendentes(e.target.checked)}
+                />
+                Somente pendentes
+              </label>
+              <Button onClick={carregar} disabled={loading}>
+                Atualizar
+              </Button>
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="md:col-span-2" />
-            <div className="md:col-span-2">
-              <div className="text-xs text-black/60 mb-1">Grupo (opcional)</div>
-              <Select value={novo.grupo_id} onChange={(e) => setNovo((s) => ({ ...s, grupo_id: e.target.value }))}>
-                <option value="">(todos)</option>
-                {grupos.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nome}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button onClick={criar} disabled={loading || !orgId}>
-              Adicionar
-            </Button>
-          </div>
-
-          {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
+          {erro ? <div className="mt-3 text-sm text-red-600">{erro}</div> : null}
+          {ok ? <div className="mt-3 text-sm text-emerald-700">{ok}</div> : null}
         </Card>
 
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b border-black/10 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-semibold">Lista</div>
-              <div className="text-xs text-black/50">Admin vê tudo; Fiscal/Relatório são definidos por perfil.</div>
+        {editId ? (
+          <Card>
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold">Editar usuário</div>
+              <Button variant="ghost" onClick={cancelarEdicao}>
+                Fechar
+              </Button>
             </div>
-            <div className="text-xs text-black/50">{loading ? "Atualizando..." : `${rows.length} usuários`}</div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-black/5 text-black/60">
-                  <th className="text-left px-5 py-3">Perfil</th>
-                  <th className="text-left px-5 py-3">user_id</th>
-                  <th className="text-left px-5 py-3">Programa</th>
-                  <th className="text-left px-5 py-3">Grupo</th>
-                  <th className="text-left px-5 py-3">Status</th>
-                  <th className="text-right px-5 py-3">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const editing = editId === r.id;
-                  return (
-                    <tr key={r.id} className="border-t border-black/5 hover:bg-black/[0.03]">
-                      <td className="px-5 py-3">
-                        {editing ? (
-                          <Select value={edit.perfil} onChange={(e) => setEdit((s) => ({ ...s, perfil: e.target.value }))}>
-                            {PERFIS.map((p) => (
-                              <option key={p.v} value={p.v}>
-                                {p.t}
-                              </option>
-                            ))}
-                          </Select>
-                        ) : (
-                          <span className="font-semibold">{r.perfil}</span>
-                        )}
+            <div className="mt-3 grid md:grid-cols-3 gap-3">
+              <div className="md:col-span-2">
+                <label className="text-xs text-black/50">Nome</label>
+                <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} placeholder="Nome completo" />
+                <div className="mt-1 text-[11px] text-black/45">
+                  Salvo no <span className="font-mono">auth.users.raw_user_meta_data.nome</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-black/50">Perfil</label>
+                <Select value={editPerfil} onChange={(e) => setEditPerfil(e.target.value)}>
+                  {PERFIS.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs text-black/50">Status</label>
+                <Select
+                  value={editAtivo ? "ativo" : "pendente"}
+                  onChange={(e) => setEditAtivo(e.target.value === "ativo")}
+                >
+                  <option value="ativo">Ativo</option>
+                  <option value="pendente">Pendente</option>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button variant="ghost" onClick={cancelarEdicao}>
+                Cancelar
+              </Button>
+              <Button onClick={salvarEdicao}>Salvar</Button>
+            </div>
+          </Card>
+        ) : null}
+
+        <Card>
+          {loading ? (
+            <div className="text-sm text-black/60">Carregando…</div>
+          ) : filtrados.length === 0 ? (
+            <div className="text-sm text-black/60">Nenhum usuário encontrado.</div>
+          ) : (
+            <div className="overflow-auto">
+              <table className="min-w-[860px] w-full text-sm">
+                <thead>
+                  <tr className="text-left text-black/50 border-b">
+                    <th className="py-2 pr-3">Nome</th>
+                    <th className="py-2 pr-3">E-mail</th>
+                    <th className="py-2 pr-3">Perfil</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Criado</th>
+                    <th className="py-2 pr-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtrados.map((r) => (
+                    <tr key={r.id} className="border-b last:border-b-0">
+                      <td className="py-2 pr-3">
+                        <div className="font-medium">{r.nome || "-"}</div>
                       </td>
-
-                      <td className="px-5 py-3 text-black/70">
-                        {editing ? <Input value={edit.user_id} onChange={(e) => setEdit((s) => ({ ...s, user_id: e.target.value }))} /> : r.user_id}
+                      <td className="py-2 pr-3">{r.email || "-"}</td>
+                      <td className="py-2 pr-3">
+                        {r.perfil ? <Badge>{r.perfil}</Badge> : <Badge variant="warn">-</Badge>}
                       </td>
-
-                      <td className="px-5 py-3">
-                        {editing ? (
-                          <Select value={edit.programa_id || ""} onChange={(e) => setEdit((s) => ({ ...s, programa_id: e.target.value }))}>
-                            <option value="">(todos)</option>
-                            {programas.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.nome}
-                              </option>
-                            ))}
-                          </Select>
-                        ) : (
-                          <span className="text-black/60">{r.programa_id ? (programaNome[r.programa_id] || "—") : "(todos)"}</span>
-                        )}
+                      <td className="py-2 pr-3">
+                        {r.ativo ? <Badge>Ativo</Badge> : <Badge variant="warn">Pendente</Badge>}
                       </td>
+                      <td className="py-2 pr-3">{fmtTs(r.criado_em)}</td>
+                      <td className="py-2 pr-3 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" onClick={() => iniciarEdicao(r)}>
+                            Editar
+                          </Button>
 
-                      <td className="px-5 py-3">
-                        {editing ? (
-                          <Select value={edit.grupo_id || ""} onChange={(e) => setEdit((s) => ({ ...s, grupo_id: e.target.value }))}>
-                            <option value="">(todos)</option>
-                            {grupos.map((g) => (
-                              <option key={g.id} value={g.id}>
-                                {g.nome}
-                              </option>
-                            ))}
-                          </Select>
-                        ) : (
-                          <span className="text-black/60">{r.grupo_id ? (grupoNome[r.grupo_id] || "—") : "(todos)"}</span>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex items-center rounded-xl border px-3 py-1 text-xs font-semibold ${r.ativo ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-                          {r.ativo ? "ativo" : "inativo"}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-3 text-right">
-                        {editing ? (
-                          <div className="flex justify-end gap-2 flex-wrap">
-                            <Button onClick={salvar} disabled={loading}>Salvar</Button>
-                            <Button variant="secondary" onClick={cancelEdit} disabled={loading}>Cancelar</Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2 flex-wrap">
-                            <Button variant="secondary" onClick={() => startEdit(r)} disabled={loading}>Editar</Button>
-                            <Button variant="secondary" onClick={() => toggleAtivo(r)} disabled={loading}>{r.ativo ? "Desativar" : "Ativar"}</Button>
-                          </div>
-                        )}
+<Button
+  variant="ghost"
+  className="text-red-600 hover:text-red-700"
+  onClick={() => excluirUsuario(r)}
+>
+  Excluir
+</Button>
+                          {!r.ativo ? (
+                            <Button onClick={() => aprovarRapido(r.id)}>Aprovar</Button>
+                          ) : (
+                            <Button variant="ghost" onClick={() => desativarRapido(r.id)}>
+                              Desativar
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  );
-                })}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center text-black/60">{loading ? "Carregando..." : "Nenhum usuário cadastrado."}</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
-
-        {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
       </div>
     </RequireRole>
   );

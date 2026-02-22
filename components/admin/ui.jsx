@@ -46,3 +46,12 @@ export function Select({ className = "", children, ...props }) {
     </select>
   );
 }
+
+
+export function Badge({ children, variant = "default" }) {
+  const cls =
+    variant === "warn"
+      ? "inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800 border border-amber-200"
+      : "inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 border border-emerald-200";
+  return <span className={cls}>{children}</span>;
+}

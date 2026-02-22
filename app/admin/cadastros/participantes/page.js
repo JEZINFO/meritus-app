@@ -6,22 +6,24 @@ import { Card, PageTitle, Button, Input, Select } from "../../../../components/a
 import { supabase } from "@/src/lib/supabase";
 import { getProfile } from "@/src/lib/profile";
 
-const ALL_GRUPOS = "__ALL__";
-
 export default function CadParticipantes() {
   const [orgId, setOrgId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [erro, setErro] = useState(null);
+  const [programas, setProgramas] = useState([]);
+  const [programaId, setProgramaId] = useState("");
 
   const [grupos, setGrupos] = useState([]);
-  const [grupoFiltro, setGrupoFiltro] = useState(ALL_GRUPOS);
+  const [grupoId, setGrupoId] = useState("__ALL__");
 
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState(null);
+  const [ok, setOk] = useState(null);
   const [rows, setRows] = useState([]);
 
-  const [novo, setNovo] = useState({ nome: "", grupo_id: "", ativo: true });
-
+  const [novo, setNovo] = useState({ nome: "", ativo: true });
   const [editId, setEditId] = useState(null);
-  const [edit, setEdit] = useState({ nome: "", grupo_id: "", ativo: true });
+  const [edit, setEdit] = useState({ nome: "", ativo: true, grupo_id: "" });
+
+  const programaAtual = useMemo(() => programas.find((p) => p.id === programaId) || null, [programas, programaId]);
 
   useEffect(() => {
     (async () => {
@@ -32,44 +34,84 @@ export default function CadParticipantes() {
 
   useEffect(() => {
     if (!orgId) return;
-    carregarBase();
+    carregarProgramas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
   useEffect(() => {
-    if (!orgId) return;
-    carregarLista();
+    if (!programaId) return;
+    carregarGrupos();
+    carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupoFiltro, orgId]);
+  }, [programaId]);
 
-  async function carregarBase() {
+  useEffect(() => {
+    if (!programaId) return;
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grupoId]);
+
+  async function carregarProgramas() {
     setErro(null);
+    setOk(null);
     setLoading(true);
+
     const { data, error } = await supabase
-      .from("grupos")
-      .select("id,nome,ativo,ordem")
+      .from("meritus_programas")
+      .select("id,nome,ativo")
       .eq("organizacao_id", orgId)
       .eq("ativo", true)
-      .order("ordem", { ascending: true })
       .order("nome", { ascending: true })
-      .limit(2000);
-    if (error) setErro(error.message);
-    setGrupos(data || []);
+      .limit(500);
+
+    if (error) {
+      setErro(error.message);
+      setProgramas([]);
+      setProgramaId("");
+      setLoading(false);
+      return;
+    }
+
+    setProgramas(data || []);
+    setProgramaId((prev) => prev || (data?.[0]?.id || ""));
     setLoading(false);
   }
 
-  async function carregarLista() {
+  async function carregarGrupos() {
     setErro(null);
+    setOk(null);
+
+    const { data, error } = await supabase
+      .from("meritus_grupos")
+      .select("id,nome,ativo")
+      .eq("programa_id", programaId)
+      .eq("ativo", true)
+      .order("nome", { ascending: true })
+      .limit(2000);
+
+    if (error) {
+      setErro(error.message);
+      setGrupos([]);
+      setGrupoId("__ALL__");
+      return;
+    }
+    setGrupos(data || []);
+    setGrupoId("__ALL__");
+  }
+
+  async function carregar() {
+    setErro(null);
+    setOk(null);
     setLoading(true);
 
     let q = supabase
-      .from("participantes")
-      .select("id,nome,grupo_id,ativo,criado_em,organizacao_id")
-      .eq("organizacao_id", orgId)
+      .from("meritus_participantes")
+      .select("id,nome,ativo,criado_em,grupo_id,programa_id")
+      .eq("programa_id", programaId)
       .order("nome", { ascending: true })
       .limit(5000);
 
-    if (grupoFiltro !== ALL_GRUPOS) q = q.eq("grupo_id", grupoFiltro);
+    if (grupoId && grupoId !== "__ALL__") q = q.eq("grupo_id", grupoId);
 
     const { data, error } = await q;
     if (error) setErro(error.message);
@@ -77,180 +119,168 @@ export default function CadParticipantes() {
     setLoading(false);
   }
 
-  function startEdit(r) {
-    setEditId(r.id);
-    setEdit({ nome: r.nome || "", grupo_id: r.grupo_id || "", ativo: !!r.ativo });
-  }
-  function cancelEdit() {
-    setEditId(null);
-    setEdit({ nome: "", grupo_id: "", ativo: true });
-  }
-
   async function criar() {
-    if (!orgId) return;
     setErro(null);
-    const nome = (novo.nome || "").trim();
-    if (!nome) return setErro("Informe o nome.");
-    if (!novo.grupo_id) return setErro("Selecione o grupo.");
-    setLoading(true);
+    setOk(null);
 
-    const { error } = await supabase.from("participantes").insert({
-      organizacao_id: orgId,
-      nome,
-      grupo_id: novo.grupo_id,
-      ativo: true,
-    });
+    const nome = String(novo.nome || "").trim();
+    if (!programaId) return setErro("Selecione um programa.");
+    const gId = (grupoId && grupoId !== "__ALL__") ? grupoId : (grupos[0]?.id || "");
+    if (!gId) return setErro("Cadastre um grupo antes.");
+    if (!nome) return setErro("Informe o nome do participante.");
+
+    setLoading(true);
+    const { error } = await supabase
+      .from("meritus_participantes")
+      .insert([{ programa_id: programaId, grupo_id: gId, nome, ativo: !!novo.ativo }]);
 
     if (error) setErro(error.message);
-    setNovo({ nome: "", grupo_id: "", ativo: true });
-    await carregarLista();
+    else {
+      setOk("Participante criado.");
+      setNovo({ nome: "", ativo: true });
+      await carregar();
+    }
     setLoading(false);
   }
 
-  async function salvar() {
-    if (!editId) return;
+  function startEdit(r) {
+    setEditId(r.id);
+    setEdit({ nome: r.nome || "", ativo: !!r.ativo, grupo_id: r.grupo_id || "" });
+  }
+  function cancelEdit() {
+    setEditId(null);
+    setEdit({ nome: "", ativo: true, grupo_id: "" });
+  }
+
+  async function salvarEdit() {
     setErro(null);
-    const nome = (edit.nome || "").trim();
+    setOk(null);
+
+    const nome = String(edit.nome || "").trim();
     if (!nome) return setErro("Informe o nome.");
     if (!edit.grupo_id) return setErro("Selecione o grupo.");
 
     setLoading(true);
     const { error } = await supabase
-      .from("participantes")
-      .update({ nome, grupo_id: edit.grupo_id, ativo: !!edit.ativo })
+      .from("meritus_participantes")
+      .update({ nome, ativo: !!edit.ativo, grupo_id: edit.grupo_id })
       .eq("id", editId);
 
     if (error) setErro(error.message);
-    cancelEdit();
-    await carregarLista();
+    else {
+      setOk("Participante atualizado.");
+      cancelEdit();
+      await carregar();
+    }
     setLoading(false);
   }
-
-  async function toggleAtivo(r) {
-    setErro(null);
-    setLoading(true);
-    const { error } = await supabase.from("participantes").update({ ativo: !r.ativo }).eq("id", r.id);
-    if (error) setErro(error.message);
-    await carregarLista();
-    setLoading(false);
-  }
-
-  const grupoNome = useMemo(() => Object.fromEntries(grupos.map((g) => [g.id, g.nome])), [grupos]);
 
   return (
     <RequireRole allow={["admin"]}>
       <div className="space-y-4">
-        <PageTitle title="Cadastros • Participantes" subtitle="Participantes vinculados a um grupo (unidade)." />
+        <PageTitle title="Participantes" subtitle="Cadastro de participantes por Programa e Grupo (Meritus)." />
 
-        <Card className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <div className="text-xs text-black/60 mb-1">Nome</div>
-              <Input value={novo.nome} onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))} placeholder="Nome do participante" />
-            </div>
+        <Card>
+          <div className="grid md:grid-cols-3 gap-3 items-end">
             <div>
-              <div className="text-xs text-black/60 mb-1">Grupo</div>
-              <Select value={novo.grupo_id} onChange={(e) => setNovo((s) => ({ ...s, grupo_id: e.target.value }))}>
-                <option value="">Selecione…</option>
-                {grupos.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nome}
-                  </option>
-                ))}
+              <label className="text-xs text-black/50">Programa</label>
+              <Select value={programaId} onChange={(e) => setProgramaId(e.target.value)}>
+                {programas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
               </Select>
+              {!programaAtual ? <div className="mt-1 text-[11px] text-black/45">Cadastre um programa primeiro.</div> : null}
+            </div>
+
+            <div>
+              <label className="text-xs text-black/50">Grupo (filtro)</label>
+              <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+                <option value="__ALL__">Todos</option>
+                {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-xs text-black/50">Novo participante</label>
+              <Input value={novo.nome} onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))} placeholder="Nome" />
+              <div className="mt-2 flex items-center gap-3">
+                <label className="text-sm text-black/70 flex items-center gap-2">
+                  <input type="checkbox" checked={!!novo.ativo} onChange={(e) => setNovo((s) => ({ ...s, ativo: e.target.checked }))} />
+                  Ativo
+                </label>
+                <Button onClick={criar} disabled={loading || !programaId}>Criar</Button>
+                <Button variant="ghost" onClick={carregar} disabled={loading || !programaId}>Atualizar</Button>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={criar} disabled={loading || !orgId}>Criar</Button>
-            <Button variant="secondary" onClick={carregarLista} disabled={loading || !orgId}>Recarregar</Button>
-
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs text-black/60">Filtro grupo</span>
-              <Select value={grupoFiltro} onChange={(e) => setGrupoFiltro(e.target.value)} disabled={loading || !orgId}>
-                <option value={ALL_GRUPOS}>Todos</option>
-                {grupos.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.nome}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
+          {erro ? <div className="mt-3 text-sm text-red-600">{erro}</div> : null}
+          {ok ? <div className="mt-3 text-sm text-emerald-700">{ok}</div> : null}
         </Card>
 
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b border-black/10 flex items-center justify-between">
-            <div>
-              <div className="text-sm font-semibold">Lista</div>
-              <div className="text-xs text-black/50">Ordenação por nome.</div>
+        {editId ? (
+          <Card>
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold">Editar participante</div>
+              <Button variant="ghost" onClick={cancelEdit}>Fechar</Button>
             </div>
-            <div className="text-xs text-black/50">{loading ? "Atualizando..." : `${rows.length} participantes`}</div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-black/5 text-black/60">
-                  <th className="text-left px-5 py-3">Nome</th>
-                  <th className="text-left px-5 py-3">Grupo</th>
-                  <th className="text-left px-5 py-3">Status</th>
-                  <th className="text-right px-5 py-3">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const editing = editId === r.id;
-                  return (
-                    <tr key={r.id} className="border-t border-black/5 hover:bg-black/[0.03]">
-                      <td className="px-5 py-3 font-medium">
-                        {editing ? <Input value={edit.nome} onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))} /> : r.nome}
-                      </td>
-                      <td className="px-5 py-3">
-                        {editing ? (
-                          <Select value={edit.grupo_id} onChange={(e) => setEdit((s) => ({ ...s, grupo_id: e.target.value }))}>
-                            <option value="">Selecione…</option>
-                            {grupos.map((g) => (
-                              <option key={g.id} value={g.id}>
-                                {g.nome}
-                              </option>
-                            ))}
-                          </Select>
-                        ) : (
-                          <span className="text-black/60">{grupoNome[r.grupo_id] || "—"}</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex items-center rounded-xl border px-3 py-1 text-xs font-semibold ${r.ativo ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-                          {r.ativo ? "ativo" : "inativo"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        {editing ? (
-                          <div className="flex justify-end gap-2 flex-wrap">
-                            <Button onClick={salvar} disabled={loading}>Salvar</Button>
-                            <Button variant="secondary" onClick={cancelEdit} disabled={loading}>Cancelar</Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2 flex-wrap">
-                            <Button variant="secondary" onClick={() => startEdit(r)} disabled={loading}>Editar</Button>
-                            <Button variant="secondary" onClick={() => toggleAtivo(r)} disabled={loading}>{r.ativo ? "Desativar" : "Ativar"}</Button>
-                          </div>
-                        )}
+            <div className="mt-3 grid md:grid-cols-3 gap-3 items-end">
+              <div className="md:col-span-2">
+                <label className="text-xs text-black/50">Nome</label>
+                <Input value={edit.nome} onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))} />
+              </div>
+
+              <div>
+                <label className="text-xs text-black/50">Grupo</label>
+                <Select value={edit.grupo_id} onChange={(e) => setEdit((s) => ({ ...s, grupo_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-black/70 flex items-center gap-2">
+                  <input type="checkbox" checked={!!edit.ativo} onChange={(e) => setEdit((s) => ({ ...s, ativo: e.target.checked }))} />
+                  Ativo
+                </label>
+                <Button onClick={salvarEdit} disabled={loading}>Salvar</Button>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+
+        <Card>
+          {loading ? (
+            <div className="text-sm text-black/60">Carregando…</div>
+          ) : !programaId ? (
+            <div className="text-sm text-black/60">Selecione um programa.</div>
+          ) : rows.length === 0 ? (
+            <div className="text-sm text-black/60">Nenhum participante.</div>
+          ) : (
+            <div className="overflow-auto">
+              <table className="min-w-[820px] w-full text-sm">
+                <thead>
+                  <tr className="text-left text-black/50 border-b">
+                    <th className="py-2 pr-3">Nome</th>
+                    <th className="py-2 pr-3">Ativo</th>
+                    <th className="py-2 pr-3">Criado</th>
+                    <th className="py-2 pr-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-b last:border-b-0">
+                      <td className="py-2 pr-3 font-medium">{r.nome}</td>
+                      <td className="py-2 pr-3">{r.ativo ? "Sim" : "Não"}</td>
+                      <td className="py-2 pr-3">{r.criado_em ? new Date(r.criado_em).toLocaleString("pt-BR") : ""}</td>
+                      <td className="py-2 pr-3 text-right">
+                        <Button variant="ghost" onClick={() => startEdit(r)}>Editar</Button>
                       </td>
                     </tr>
-                  );
-                })}
-                {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-10 text-center text-black/60">{loading ? "Carregando..." : "Nenhum participante cadastrado."}</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
     </RequireRole>
