@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "@/src/lib/profile";
 import { supabase } from "@/src/lib/supabase";
@@ -18,8 +19,8 @@ function NavItem({ href, label, active, onClick }) {
       href={href}
       onClick={onClick}
       className={cn(
-        "px-3 py-2 rounded-xl text-sm transition",
-        active ? "bg-black text-white" : "text-black/70 hover:bg-black/5 hover:text-black"
+        "px-3 py-2 rounded-xl text-sm transition border",
+        active ? "bg-[rgba(212,175,55,.14)] text-[var(--m-gold)] border border-[rgba(212,175,55,.25)]" : "text-white/70 hover:bg-white/5 hover:text-white border border-transparent"
       )}
     >
       {label}
@@ -72,10 +73,12 @@ useEffect(() => {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-black/10 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-[rgba(212,175,55,.22)] bg-[rgba(11,11,13,.78)] backdrop-blur">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Link href="/admin" className="font-semibold tracking-tight" onClick={closeAll}>Meritus{APP_VERSION ? (<span className="ml-2 text-[12px] text-black/60 bg-black/5 border border-black/10 rounded-full px-2 py-0.5">v{APP_VERSION}</span>) : null}</Link>
+          <Link href="/admin" className="flex items-center gap-2 font-semibold tracking-tight" onClick={closeAll}>
+            <Image src="/brand/meritus-mark.png" alt="Meritus" width={44} height={44} className="rounded-xl drop-shadow-[0_0_16px_rgba(212,175,55,0.35)]" />
+            <span className="text-lg font-semibold tracking-[0.22em] text-white">MERITUS</span>{APP_VERSION ? (<span className="ml-2 text-[12px] text-white/70 bg-[rgba(212,175,55,.10)] border border-[rgba(212,175,55,.20)] rounded-full px-2 py-0.5">v{APP_VERSION}</span>) : null}</Link>
 
           <div className="hidden md:flex items-center gap-1">
             {baseItems.map((i) => (
@@ -87,20 +90,20 @@ useEffect(() => {
                 <button
                   onClick={() => setOpenCad((s) => !s)}
                   className={cn(
-                    "px-3 py-2 rounded-xl text-sm transition",
-                    openCad ? "bg-black text-white" : "text-black/70 hover:bg-black/5 hover:text-black"
+                    "px-3 py-2 rounded-xl text-sm transition border",
+                    openCad ? "bg-[rgba(212,175,55,.14)] text-[var(--m-gold)] border border-[rgba(212,175,55,.25)]" : "text-white/70 hover:bg-white/5 hover:text-white border border-transparent"
                   )}
                 >
                   Cadastros
                 </button>
                 {openCad ? (
-                  <div className="absolute left-0 mt-2 w-56 rounded-2xl border border-black/10 bg-white shadow-lg p-2">
+                  <div className="absolute left-0 mt-2 w-56 rounded-2xl border border-white/10 bg-[var(--m-surface)] shadow-lg p-2">
                     {cadItems.map((i) => (
                       <Link
                         key={i.href}
                         href={i.href}
                         onClick={closeAll}
-                        className="block rounded-xl px-3 py-2 text-sm text-black/70 hover:bg-black/5 hover:text-black"
+                        className="block rounded-xl px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white"
                       >
                         {i.label}
                       </Link>
@@ -115,9 +118,9 @@ useEffect(() => {
         <div className="flex items-center gap-2">
           {/* Programa selector */}
           <div className="hidden md:flex items-center gap-2">
-            <span className="text-xs text-black/50">Programa</span>
+            <span className="text-xs text-white/55">Programa</span>
             <select
-              className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm"
+              className="rounded-xl border border-white/10 bg-[var(--m-surface)] px-3 py-2 text-sm text-white"
               value={programaId || ""}
               onChange={(e) => setProgramaId(e.target.value)}
               disabled={loadingProgramas || (programas || []).length === 0}
@@ -135,26 +138,25 @@ useEffect(() => {
             <button
               onClick={() => setOpenUser((s) => !s)}
               className={cn(
-                "px-3 py-2 rounded-xl text-sm transition border border-black/10",
-                openUser ? "bg-black text-white border-black" : "bg-white hover:bg-black/5"
+                "px-3 py-2 rounded-xl text-sm transition border border-white/10",
+                openUser ? "bg-white/5 text-white border-white/15" : "bg-[var(--m-surface)] text-white hover:bg-white/5"
               )}
             >
               {displayName || profile?.perfil || "usuário"}
             </button>
             {openUser ? (
-              <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-black/10 bg-white shadow-lg p-2">
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-white/10 bg-[var(--m-surface)] shadow-lg p-2">
                 <div className="px-3 py-2">
-  <div className="text-xs text-black/50">Usuário</div>
-  <div className="text-sm font-semibold">{displayName || "—"}</div>
-              {APP_VERSION ? (<div className="text-[11px] text-black/45">Versão: v{APP_VERSION}</div>) : null} /*AppVersionLine*/
-              {APP_VERSION ? (<div className="text-[11px] text-black/45">v{APP_VERSION}</div>) : null}
-  <div className="mt-1 text-xs text-black/50">Perfil</div>
-  <div className="text-sm font-semibold">{profile?.perfil || "—"}</div>
+  <div className="text-xs text-white/55">Usuário</div>
+  <div className="text-sm font-semibold text-white">{displayName || "—"}</div>
+              {APP_VERSION ? (<div className="text-[11px] text-white/45">Versão: v{APP_VERSION}</div>) : null}
+  <div className="mt-1 text-xs text-white/55">Perfil</div>
+  <div className="text-sm font-semibold text-white">{profile?.perfil || "—"}</div>
 </div>
-                <div className="h-px bg-black/10 my-1" />
+                <div className="h-px bg-white/10 my-1" />
                 <button
                   onClick={sair}
-                  className="w-full text-left rounded-xl px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  className="w-full text-left rounded-xl px-3 py-2 text-sm text-[var(--m-danger)] hover:bg-[rgba(255,90,95,.12)]"
                 >
                   Sair
                 </button>
@@ -164,7 +166,7 @@ useEffect(() => {
 
           {/* Mobile */}
           <button
-            className="md:hidden rounded-xl border border-black/10 px-3 py-2 text-sm"
+            className="md:hidden rounded-xl border border-white/10 bg-[var(--m-surface)] px-3 py-2 text-sm text-white"
             onClick={() => setOpenMobile((s) => !s)}
           >
             Menu
@@ -173,12 +175,12 @@ useEffect(() => {
       </div>
 
       {openMobile ? (
-        <div className="md:hidden border-t border-black/10 bg-white">
+        <div className="md:hidden border-t border-white/10 bg-[var(--m-surface)]">
           <div className="px-4 py-3 space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-black/50">Programa</span>
+              <span className="text-xs text-white/55">Programa</span>
               <select
-                className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm"
+                className="w-full rounded-xl border border-white/10 bg-[var(--m-surface)] px-3 py-2 text-sm text-white"
                 value={programaId || ""}
                 onChange={(e) => setProgramaId(e.target.value)}
                 disabled={loadingProgramas || (programas || []).length === 0}
@@ -198,15 +200,15 @@ useEffect(() => {
             </div>
 
             {cadItems.length ? (
-              <div className="rounded-2xl border border-black/10 p-2">
-                <div className="text-xs text-black/50 px-2 py-1">Cadastros</div>
+              <div className="rounded-2xl border border-white/10 p-2">
+                <div className="text-xs text-white/55 px-2 py-1">Cadastros</div>
                 <div className="grid gap-1">
                   {cadItems.map((i) => (
                     <Link
                       key={i.href}
                       href={i.href}
                       onClick={closeAll}
-                      className="block rounded-xl px-3 py-2 text-sm text-black/70 hover:bg-black/5 hover:text-black"
+                      className="block rounded-xl px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white"
                     >
                       {i.label}
                     </Link>
@@ -217,7 +219,7 @@ useEffect(() => {
 
             <button
               onClick={sair}
-              className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              className="w-full rounded-xl border border-[rgba(255,90,95,.35)] bg-[rgba(255,90,95,.10)] px-3 py-2 text-sm text-[var(--m-danger)]"
             >
               Sair
             </button>

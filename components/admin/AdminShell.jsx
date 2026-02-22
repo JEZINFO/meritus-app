@@ -12,7 +12,7 @@ const STORAGE_KEY = "meritus_programaId";
 function Spinner() {
   return (
     <div className="min-h-[40vh] flex items-center justify-center">
-      <div className="h-10 w-10 rounded-full border-2 border-black/20 border-t-black animate-spin" />
+      <div className="h-10 w-10 rounded-full border-2 border-white/20 border-t-[color:var(--m-gold)] animate-spin" />
     </div>
   );
 }
@@ -106,10 +106,10 @@ export default function AdminShell({ children }) {
 
   return (
     <ProgramProvider value={ctxValue}>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-[var(--m-bg)]">
         <AdminHeader profile={profile} nav={nav} />
         <main className="mx-auto max-w-6xl px-4 py-6">
-          <div className="mb-4 text-xs text-black/50">{pathname?.split("/").filter(Boolean).join(" / ")}</div>
+          <div className="mb-4 text-xs text-white/45">{pathname?.split("/").filter(Boolean).join(" / ")}</div>
           {children}
         </main>
       </div>

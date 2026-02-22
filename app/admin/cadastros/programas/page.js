@@ -108,11 +108,11 @@ export default function CadProgramas() {
         <Card className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <div className="text-xs text-black/60 mb-1">Nome</div>
+              <div className="text-xs text-white/60 mb-1">Nome</div>
               <Input value={novo.nome} onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))} placeholder="Ex: Meritus 2026" />
             </div>
             <div>
-              <div className="text-xs text-black/60 mb-1">Descrição</div>
+              <div className="text-xs text-white/60 mb-1">Descrição</div>
               <Input value={novo.descricao} onChange={(e) => setNovo((s) => ({ ...s, descricao: e.target.value }))} placeholder="Opcional" />
             </div>
           </div>
@@ -120,25 +120,25 @@ export default function CadProgramas() {
           <div className="flex items-center gap-2 flex-wrap">
             <Button onClick={criar} disabled={loading || !orgId}>Criar</Button>
             <Button variant="secondary" onClick={carregar} disabled={loading || !orgId}>Recarregar</Button>
-            <div className="text-xs text-black/50 ml-auto">{ativos}/{rows.length} ativos</div>
+            <div className="text-xs text-white/55 ml-auto">{ativos}/{rows.length} ativos</div>
           </div>
 
           {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
         </Card>
 
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b border-black/10 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold">Lista</div>
-              <div className="text-xs text-black/50">Programas ativos aparecem no seletor do header.</div>
+              <div className="text-xs text-white/55">Programas ativos aparecem no seletor do header.</div>
             </div>
-            <div className="text-xs text-black/50">{loading ? "Atualizando..." : `${rows.length} programas`}</div>
+            <div className="text-xs text-white/55">{loading ? "Atualizando..." : `${rows.length} programas`}</div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-black/5 text-black/60">
+                <tr className="bg-black/5 text-white/60">
                   <th className="text-left px-5 py-3">Nome</th>
                   <th className="text-left px-5 py-3">Descrição</th>
                   <th className="text-left px-5 py-3">Status</th>
@@ -153,7 +153,7 @@ export default function CadProgramas() {
                       <td className="px-5 py-3 font-medium">
                         {editing ? <Input value={edit.nome} onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))} /> : r.nome}
                       </td>
-                      <td className="px-5 py-3 text-black/60">
+                      <td className="px-5 py-3 text-white/60">
                         {editing ? <Input value={edit.descricao} onChange={(e) => setEdit((s) => ({ ...s, descricao: e.target.value }))} /> : (r.descricao || "—")}
                       </td>
                       <td className="px-5 py-3">
@@ -179,7 +179,7 @@ export default function CadProgramas() {
                 })}
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-5 py-10 text-center text-black/60">{loading ? "Carregando..." : "Nenhum programa cadastrado."}</td>
+                    <td colSpan={4} className="px-5 py-10 text-center text-white/60">{loading ? "Carregando..." : "Nenhum programa cadastrado."}</td>
                   </tr>
                 ) : null}
               </tbody>

@@ -25,6 +25,14 @@ function fmtPts(n) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+
+function cnRankBox(idx) {
+  if (idx === 0) return "h-8 w-8 rounded-xl bg-[var(--m-gold)] text-black flex items-center justify-center text-sm font-semibold";
+  if (idx === 1) return "h-8 w-8 rounded-xl bg-white/10 text-white flex items-center justify-center text-sm font-semibold";
+  if (idx === 2) return "h-8 w-8 rounded-xl bg-[rgba(205,127,50,.18)] text-white flex items-center justify-center text-sm font-semibold";
+  return "h-8 w-8 rounded-xl bg-white/5 text-white flex items-center justify-center text-sm";
+}
+
 export default function AdminHome() {
   const { programas, programaId, setProgramaId, loadingProgramas } = useProgram();
 
@@ -217,13 +225,17 @@ export default function AdminHome() {
 
   return (
     <RequireRole allow={["admin", "fiscal", "relatorio"]}>
-      <div className="space-y-4">
+      <div className="relative space-y-4">
+        <div className="pointer-events-none absolute -top-6 -right-10 opacity-[0.03] hidden md:block">
+          <img src="/brand/meritus-mark.png" alt="" className="w-[420px]" />
+        </div>
+
         <PageTitle title="Dashboard Executivo" subtitle="Visão rápida: saúde do programa, período e destaques." />
 
         <Card>
           <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
             <div className="flex-1">
-              <label className="text-xs text-black/50">Programa</label>
+              <label className="text-xs text-white/55">Programa</label>
               <Select
                 value={programaId || ""}
                 onChange={(e) => setProgramaId(e.target.value)}
@@ -245,32 +257,33 @@ export default function AdminHome() {
             </div>
           </div>
 
-          {erro ? <div className="mt-3 text-sm text-red-600">{erro}</div> : null}
+          {erro ? <div className="mt-3 text-sm text-[var(--m-danger)]">{erro}</div> : null}
         </Card>
 
         <div className="grid md:grid-cols-4 gap-3">
-          <Card>
-            <div className="text-xs text-black/50">Período aberto</div>
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(212,175,55,.55),transparent)]" />
+            <div className="text-xs text-white/55">Período aberto</div>
             <div className="mt-1 text-lg font-semibold">{periodoAberto?.rotulo || "—"}</div>
-            <div className="mt-1 text-xs text-black/60">
+            <div className="mt-1 text-xs text-white/60">
               {periodoAberto ? `${fmtDate(periodoAberto.inicio)} → ${fmtDate(periodoAberto.fim)}` : "Sem período aberto"}
             </div>
           </Card>
 
-          <Card>
-            <div className="text-xs text-black/50">Participantes ativos</div>
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(212,175,55,.55),transparent)]" />            <div className="text-xs text-white/55">Participantes ativos</div>
             <div className="mt-1 text-2xl font-semibold">{fmtNum(kpis.participantes)}</div>
           </Card>
 
-          <Card>
-            <div className="text-xs text-black/50">Grupos ativos</div>
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(212,175,55,.55),transparent)]" />            <div className="text-xs text-white/55">Grupos ativos</div>
             <div className="mt-1 text-2xl font-semibold">{fmtNum(kpis.grupos)}</div>
           </Card>
 
-          <Card>
-            <div className="text-xs text-black/50">Pontos no período aberto</div>
+          <Card className="relative overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(212,175,55,.55),transparent)]" />            <div className="text-xs text-white/55">Pontos no período aberto</div>
             <div className="mt-1 text-2xl font-semibold">{fmtPts(kpis.pontos)}</div>
-            <div className="mt-1 text-xs text-black/60">{fmtNum(kpis.lancamentos)} lançamentos</div>
+            <div className="mt-1 text-xs text-white/60">{fmtNum(kpis.lancamentos)} lançamentos</div>
           </Card>
         </div>
 
@@ -278,7 +291,7 @@ export default function AdminHome() {
           <Card>
             <div className="flex items-center justify-between">
               <div className="font-semibold">Top participantes</div>
-              <div className="text-xs text-black/50">
+              <div className="text-xs text-white/55">
                 Última atividade: {kpis.ultimaAtividade ? new Date(kpis.ultimaAtividade).toLocaleString("pt-BR") : "—"}
               </div>
             </div>
@@ -286,21 +299,21 @@ export default function AdminHome() {
             <div className="mt-3 space-y-2">
               {topParticipantes?.length ? (
                 topParticipantes.map((p, idx) => (
-                  <div key={p.id} className="flex items-center justify-between rounded-xl border border-black/10 px-3 py-2">
+                  <div key={p.id} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-xl bg-black text-white flex items-center justify-center text-sm">
+                      <div className={cnRankBox(idx)}>
                         {idx + 1}
                       </div>
                       <div>
                         <div className="text-sm font-medium">{p.nome}</div>
-                        <div className="text-xs text-black/50">#{String(p.id).slice(0, 8)}</div>
+                        <div className="text-xs text-white/55">#{String(p.id).slice(0, 8)}</div>
                       </div>
                     </div>
                     <div className="text-sm font-semibold">{fmtPts(p.pontos)}</div>
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-black/60">Sem dados (abra um período e faça lançamentos).</div>
+                <div className="text-sm text-white/60">Sem dados (abra um período e faça lançamentos).</div>
               )}
             </div>
           </Card>
@@ -310,9 +323,9 @@ export default function AdminHome() {
             <div className="mt-3 space-y-2">
               {topGrupos?.length ? (
                 topGrupos.map((g, idx) => (
-                  <div key={g.id} className="flex items-center justify-between rounded-xl border border-black/10 px-3 py-2">
+                  <div key={g.id} className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-xl bg-black/10 flex items-center justify-center text-sm font-semibold">
+                      <div className={cnRankBox(idx)}>
                         {idx + 1}
                       </div>
                       <div className="text-sm font-medium">{g.nome}</div>
@@ -321,7 +334,7 @@ export default function AdminHome() {
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-black/60">Sem dados suficientes para ranking de grupos.</div>
+                <div className="text-sm text-white/60">Sem dados suficientes para ranking de grupos.</div>
               )}
             </div>
           </Card>

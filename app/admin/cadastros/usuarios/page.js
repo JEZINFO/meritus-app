@@ -184,7 +184,7 @@ async function excluirUsuario(r) {
         <Card>
           <div className="flex flex-col md:flex-row gap-2 md:items-end md:justify-between">
             <div className="flex-1">
-              <label className="text-xs text-black/50">Buscar (nome ou e-mail)</label>
+              <label className="text-xs text-white/55">Buscar (nome ou e-mail)</label>
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -193,7 +193,7 @@ async function excluirUsuario(r) {
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="text-sm text-black/70 flex items-center gap-2">
+              <label className="text-sm text-white/70 flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={somentePendentes}
@@ -222,7 +222,7 @@ async function excluirUsuario(r) {
 
             <div className="mt-3 grid md:grid-cols-3 gap-3">
               <div className="md:col-span-2">
-                <label className="text-xs text-black/50">Nome</label>
+                <label className="text-xs text-white/55">Nome</label>
                 <Input value={editNome} onChange={(e) => setEditNome(e.target.value)} placeholder="Nome completo" />
                 <div className="mt-1 text-[11px] text-black/45">
                   Salvo no <span className="font-mono">auth.users.raw_user_meta_data.nome</span>
@@ -230,7 +230,7 @@ async function excluirUsuario(r) {
               </div>
 
               <div>
-                <label className="text-xs text-black/50">Perfil</label>
+                <label className="text-xs text-white/55">Perfil</label>
                 <Select value={editPerfil} onChange={(e) => setEditPerfil(e.target.value)}>
                   {PERFIS.map((p) => (
                     <option key={p.value} value={p.value}>
@@ -241,7 +241,7 @@ async function excluirUsuario(r) {
               </div>
 
               <div>
-                <label className="text-xs text-black/50">Status</label>
+                <label className="text-xs text-white/55">Status</label>
                 <Select
                   value={editAtivo ? "ativo" : "pendente"}
                   onChange={(e) => setEditAtivo(e.target.value === "ativo")}
@@ -263,14 +263,14 @@ async function excluirUsuario(r) {
 
         <Card>
           {loading ? (
-            <div className="text-sm text-black/60">Carregando…</div>
+            <div className="text-sm text-white/60">Carregando…</div>
           ) : filtrados.length === 0 ? (
-            <div className="text-sm text-black/60">Nenhum usuário encontrado.</div>
+            <div className="text-sm text-white/60">Nenhum usuário encontrado.</div>
           ) : (
             <div className="overflow-auto">
               <table className="min-w-[860px] w-full text-sm">
                 <thead>
-                  <tr className="text-left text-black/50 border-b">
+                  <tr className="text-left text-white/55 border-b">
                     <th className="py-2 pr-3">Nome</th>
                     <th className="py-2 pr-3">E-mail</th>
                     <th className="py-2 pr-3">Perfil</th>

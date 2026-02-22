@@ -91,11 +91,11 @@ export default function CadOrganizacoes() {
         <Card>
           <div className="grid md:grid-cols-3 gap-3 items-end">
             <div className="md:col-span-2">
-              <label className="text-xs text-black/50">Nome</label>
+              <label className="text-xs text-white/55">Nome</label>
               <Input value={novo.nome} onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))} placeholder="Ex.: IASD Central" />
             </div>
             <div className="flex items-center gap-3">
-              <label className="text-sm text-black/70 flex items-center gap-2">
+              <label className="text-sm text-white/70 flex items-center gap-2">
                 <input type="checkbox" checked={!!novo.ativo} onChange={(e) => setNovo((s) => ({ ...s, ativo: e.target.checked }))} />
                 Ativo
               </label>
@@ -116,11 +116,11 @@ export default function CadOrganizacoes() {
             </div>
             <div className="mt-3 grid md:grid-cols-3 gap-3 items-end">
               <div className="md:col-span-2">
-                <label className="text-xs text-black/50">Nome</label>
+                <label className="text-xs text-white/55">Nome</label>
                 <Input value={edit.nome} onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))} />
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm text-black/70 flex items-center gap-2">
+                <label className="text-sm text-white/70 flex items-center gap-2">
                   <input type="checkbox" checked={!!edit.ativo} onChange={(e) => setEdit((s) => ({ ...s, ativo: e.target.checked }))} />
                   Ativo
                 </label>
@@ -132,14 +132,14 @@ export default function CadOrganizacoes() {
 
         <Card>
           {loading ? (
-            <div className="text-sm text-black/60">Carregando…</div>
+            <div className="text-sm text-white/60">Carregando…</div>
           ) : rows.length === 0 ? (
-            <div className="text-sm text-black/60">Nenhuma organização.</div>
+            <div className="text-sm text-white/60">Nenhuma organização.</div>
           ) : (
             <div className="overflow-auto">
               <table className="min-w-[640px] w-full text-sm">
                 <thead>
-                  <tr className="text-left text-black/50 border-b">
+                  <tr className="text-left text-white/55 border-b">
                     <th className="py-2 pr-3">Nome</th>
                     <th className="py-2 pr-3">Ativo</th>
                     <th className="py-2 pr-3">Criado</th>

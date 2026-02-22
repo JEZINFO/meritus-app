@@ -150,7 +150,7 @@ export default function AdminAcessosFiscaisPage() {
         <Card>
           <div className="flex flex-col md:flex-row gap-3 md:items-end md:justify-between">
             <div className="flex-1">
-              <label className="text-xs text-black/50">Fiscal</label>
+              <label className="text-xs text-white/55">Fiscal</label>
               <Select value={fiscalId} onChange={(e) => setFiscalId(e.target.value)}>
                 {fiscais.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -160,7 +160,7 @@ export default function AdminAcessosFiscaisPage() {
               </Select>
 
               {fiscalAtual ? (
-                <div className="mt-2 text-[11px] text-black/50">
+                <div className="mt-2 text-[11px] text-white/55">
                   <span className="font-mono">{fiscalAtual.id}</span>
                   {fiscalAtual.email ? <> • {fiscalAtual.email}</> : null}
                 </div>
@@ -168,7 +168,7 @@ export default function AdminAcessosFiscaisPage() {
             </div>
 
             <div className="flex-1">
-              <label className="text-xs text-black/50">Filtrar grupos</label>
+              <label className="text-xs text-white/55">Filtrar grupos</label>
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ex.: COALA" />
             </div>
 
@@ -185,7 +185,7 @@ export default function AdminAcessosFiscaisPage() {
 
         <Card>
           {loading ? (
-            <div className="text-sm text-black/60">Carregando…</div>
+            <div className="text-sm text-white/60">Carregando…</div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
               {gruposFiltrados.map((g) => {
@@ -200,7 +200,7 @@ export default function AdminAcessosFiscaisPage() {
                       "text-left w-full rounded-2xl border px-4 py-3 transition",
                       checked
                         ? "bg-emerald-50 border-emerald-200"
-                        : "bg-white border-black/10 hover:bg-black/5",
+                        : "bg-[var(--m-surface)] border-white/10 hover:bg-white/5",
                       saving ? "opacity-60" : "",
                     ].join(" ")}
                   >

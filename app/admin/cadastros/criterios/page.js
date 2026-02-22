@@ -173,7 +173,7 @@ export default function CadCriterios() {
         <Card>
           <div className="grid md:grid-cols-3 gap-3 items-end">
             <div>
-              <label className="text-xs text-black/50">Programa</label>
+              <label className="text-xs text-white/55">Programa</label>
               <Select value={programaId} onChange={(e) => setProgramaId(e.target.value)}>
                 {programas.map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
@@ -183,34 +183,34 @@ export default function CadCriterios() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="text-xs text-black/50">Novo critério</label>
+              <label className="text-xs text-white/55">Novo critério</label>
               <Input value={novo.nome} onChange={(e) => setNovo((s) => ({ ...s, nome: e.target.value }))} placeholder="Ex.: Presença" />
             </div>
 
             <div>
-              <label className="text-xs text-black/50">Tipo</label>
+              <label className="text-xs text-white/55">Tipo</label>
               <Select value={novo.tipo} onChange={(e) => setNovo((s) => ({ ...s, tipo: e.target.value }))}>
                 {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </Select>
             </div>
 
             <div>
-              <label className="text-xs text-black/50">Pontos base</label>
+              <label className="text-xs text-white/55">Pontos base</label>
               <Input type="number" value={novo.pontos_base} onChange={(e) => setNovo((s) => ({ ...s, pontos_base: e.target.value }))} />
             </div>
 
             <div>
-              <label className="text-xs text-black/50">Peso padrão</label>
+              <label className="text-xs text-white/55">Peso padrão</label>
               <Input type="number" value={novo.peso_padrao} onChange={(e) => setNovo((s) => ({ ...s, peso_padrao: e.target.value }))} />
             </div>
 
             <div>
-              <label className="text-xs text-black/50">Ordem</label>
+              <label className="text-xs text-white/55">Ordem</label>
               <Input type="number" value={novo.ordem} onChange={(e) => setNovo((s) => ({ ...s, ordem: e.target.value }))} />
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="text-sm text-black/70 flex items-center gap-2">
+              <label className="text-sm text-white/70 flex items-center gap-2">
                 <input type="checkbox" checked={!!novo.ativo} onChange={(e) => setNovo((s) => ({ ...s, ativo: e.target.checked }))} />
                 Ativo
               </label>
@@ -232,34 +232,34 @@ export default function CadCriterios() {
 
             <div className="mt-3 grid md:grid-cols-3 gap-3 items-end">
               <div className="md:col-span-2">
-                <label className="text-xs text-black/50">Nome</label>
+                <label className="text-xs text-white/55">Nome</label>
                 <Input value={edit.nome} onChange={(e) => setEdit((s) => ({ ...s, nome: e.target.value }))} />
               </div>
 
               <div>
-                <label className="text-xs text-black/50">Tipo</label>
+                <label className="text-xs text-white/55">Tipo</label>
                 <Select value={edit.tipo} onChange={(e) => setEdit((s) => ({ ...s, tipo: e.target.value }))}>
                   {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </Select>
               </div>
 
               <div>
-                <label className="text-xs text-black/50">Pontos base</label>
+                <label className="text-xs text-white/55">Pontos base</label>
                 <Input type="number" value={edit.pontos_base} onChange={(e) => setEdit((s) => ({ ...s, pontos_base: e.target.value }))} />
               </div>
 
               <div>
-                <label className="text-xs text-black/50">Peso padrão</label>
+                <label className="text-xs text-white/55">Peso padrão</label>
                 <Input type="number" value={edit.peso_padrao} onChange={(e) => setEdit((s) => ({ ...s, peso_padrao: e.target.value }))} />
               </div>
 
               <div>
-                <label className="text-xs text-black/50">Ordem</label>
+                <label className="text-xs text-white/55">Ordem</label>
                 <Input type="number" value={edit.ordem} onChange={(e) => setEdit((s) => ({ ...s, ordem: e.target.value }))} />
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="text-sm text-black/70 flex items-center gap-2">
+                <label className="text-sm text-white/70 flex items-center gap-2">
                   <input type="checkbox" checked={!!edit.ativo} onChange={(e) => setEdit((s) => ({ ...s, ativo: e.target.checked }))} />
                   Ativo
                 </label>
@@ -271,16 +271,16 @@ export default function CadCriterios() {
 
         <Card>
           {loading ? (
-            <div className="text-sm text-black/60">Carregando…</div>
+            <div className="text-sm text-white/60">Carregando…</div>
           ) : !programaId ? (
-            <div className="text-sm text-black/60">Selecione um programa.</div>
+            <div className="text-sm text-white/60">Selecione um programa.</div>
           ) : rows.length === 0 ? (
-            <div className="text-sm text-black/60">Nenhum critério cadastrado.</div>
+            <div className="text-sm text-white/60">Nenhum critério cadastrado.</div>
           ) : (
             <div className="overflow-auto">
               <table className="min-w-[980px] w-full text-sm">
                 <thead>
-                  <tr className="text-left text-black/50 border-b">
+                  <tr className="text-left text-white/55 border-b">
                     <th className="py-2 pr-3">Nome</th>
                     <th className="py-2 pr-3">Tipo</th>
                     <th className="py-2 pr-3">Pontos</th>

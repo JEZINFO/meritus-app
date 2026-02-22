@@ -143,13 +143,13 @@ export default function AdminPeriodos() {
         />
 
         <Card className="space-y-3">
-          <div className="text-sm text-black/70">
+          <div className="text-sm text-white/70">
             Programa selecionado: <b>{programaNome}</b>
           </div>
 
           <div className="grid gap-3 md:grid-cols-4">
             <div className="md:col-span-2">
-              <div className="text-xs text-black/60 mb-1">Rótulo</div>
+              <div className="text-xs text-white/60 mb-1">Rótulo</div>
               <Input
                 value={novo.rotulo}
                 onChange={(e) => setNovo((s) => ({ ...s, rotulo: e.target.value }))}
@@ -159,19 +159,19 @@ export default function AdminPeriodos() {
             </div>
 
             <div>
-              <div className="text-xs text-black/60 mb-1">Início</div>
+              <div className="text-xs text-white/60 mb-1">Início</div>
               <Input type="date" value={novo.inicio} onChange={(e) => setNovo((s) => ({ ...s, inicio: e.target.value }))} disabled={!programaId || loading} />
             </div>
 
             <div>
-              <div className="text-xs text-black/60 mb-1">Fim</div>
+              <div className="text-xs text-white/60 mb-1">Fim</div>
               <Input type="date" value={novo.fim} onChange={(e) => setNovo((s) => ({ ...s, fim: e.target.value }))} disabled={!programaId || loading} />
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-black/60">Status</span>
+              <span className="text-xs text-white/60">Status</span>
               <Select value={novo.status} onChange={(e) => setNovo((s) => ({ ...s, status: e.target.value }))} disabled={!programaId || loading}>
                 <option value="aberto">aberto</option>
                 <option value="fechado">fechado</option>
@@ -187,18 +187,18 @@ export default function AdminPeriodos() {
         </Card>
 
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b border-black/10 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold">Lista</div>
-              <div className="text-xs text-black/50">Status “aberto” permite lançamentos para Fiscal.</div>
+              <div className="text-xs text-white/55">Status “aberto” permite lançamentos para Fiscal.</div>
             </div>
-            <div className="text-xs text-black/50">{loading ? "Atualizando..." : `${periodos.length} períodos`}</div>
+            <div className="text-xs text-white/55">{loading ? "Atualizando..." : `${periodos.length} períodos`}</div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-black/5 text-black/60">
+                <tr className="bg-black/5 text-white/60">
                   <th className="text-left px-5 py-3">Rótulo</th>
                   <th className="text-left px-5 py-3">Início</th>
                   <th className="text-left px-5 py-3">Fim</th>
@@ -224,7 +224,7 @@ export default function AdminPeriodos() {
                         {editing ? (
                           <Input type="date" value={edit.inicio} onChange={(e) => setEdit((s) => ({ ...s, inicio: e.target.value }))} />
                         ) : (
-                          <span className="text-black/70">{iso(p.inicio)}</span>
+                          <span className="text-white/70">{iso(p.inicio)}</span>
                         )}
                       </td>
 
@@ -232,7 +232,7 @@ export default function AdminPeriodos() {
                         {editing ? (
                           <Input type="date" value={edit.fim} onChange={(e) => setEdit((s) => ({ ...s, fim: e.target.value }))} />
                         ) : (
-                          <span className="text-black/70">{iso(p.fim)}</span>
+                          <span className="text-white/70">{iso(p.fim)}</span>
                         )}
                       </td>
 
@@ -284,7 +284,7 @@ export default function AdminPeriodos() {
 
                 {periodos.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-black/60">
+                    <td colSpan={5} className="px-5 py-10 text-center text-white/60">
                       {loading ? "Carregando..." : "Nenhum período cadastrado para este programa."}
                     </td>
                   </tr>

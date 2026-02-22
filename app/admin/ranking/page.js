@@ -10,7 +10,7 @@ const ALL = "__ALL__";
 
 function Badge({ children }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-black/10 bg-black/[0.04] px-2.5 py-1 text-xs font-medium">
+    <span className="inline-flex items-center rounded-full border border-[color:var(--m-border)] bg-[var(--m-surface-2)] px-2.5 py-1 text-xs font-medium">
       {children}
     </span>
   );
@@ -19,6 +19,19 @@ function Badge({ children }) {
 function fmtNumber(n) {
   const v = Number(n ?? 0);
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+
+function podiumCardClass(pos) {
+  if (pos === 1) return "border-[rgba(212,175,55,.35)] bg-[linear-gradient(180deg,rgba(212,175,55,.10),rgba(0,0,0,0))]";
+  if (pos === 2) return "border-white/15 bg-[linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,0))]";
+  return "border-[rgba(205,127,50,.22)] bg-[linear-gradient(180deg,rgba(205,127,50,.10),rgba(0,0,0,0))]";
+}
+
+function podiumPill(pos) {
+  if (pos === 1) return "bg-[rgba(212,175,55,.16)] text-[var(--m-gold)] border border-[rgba(212,175,55,.30)]";
+  if (pos === 2) return "bg-white/10 text-white/80 border border-white/15";
+  return "bg-[rgba(205,127,50,.14)] text-white/80 border border-[rgba(205,127,50,.22)]";
 }
 
 function downloadCsv(filename, rows) {
@@ -223,7 +236,7 @@ function RankingPremium() {
       {!programaId && (
         <Card>
           <div className="p-4">
-            <div className="text-sm text-black/60">Selecione um programa no topo para visualizar o ranking.</div>
+            <div className="text-sm text-white/60">Selecione um programa no topo para visualizar o ranking.</div>
           </div>
         </Card>
       )}
@@ -235,7 +248,7 @@ function RankingPremium() {
               <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
                   <div>
-                    <div className="text-xs font-medium text-black/60 mb-1">Grupo</div>
+                    <div className="text-xs font-medium text-white/60 mb-1">Grupo</div>
                     <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
                       <option value={ALL}>Todos</option>
                       {(grupos || [])
@@ -249,7 +262,7 @@ function RankingPremium() {
                   </div>
 
                   <div>
-                    <div className="text-xs font-medium text-black/60 mb-1">Período</div>
+                    <div className="text-xs font-medium text-white/60 mb-1">Período</div>
                     <Select value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
                       <option value={ALL}>Todos</option>
                       {(periodos || []).map((p) => (
@@ -261,7 +274,7 @@ function RankingPremium() {
                   </div>
 
                   <div>
-                    <div className="text-xs font-medium text-black/60 mb-1">Buscar</div>
+                    <div className="text-xs font-medium text-white/60 mb-1">Buscar</div>
                     <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome ou grupo..." />
                   </div>
                 </div>
@@ -273,19 +286,19 @@ function RankingPremium() {
                 </div>
               </div>
 
-              {erro ? <div className="text-sm text-red-600">{erro}</div> : null}
+              {erro ? <div className="text-sm text-[var(--m-danger)]">{erro}</div> : null}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Card className="p-3">
-                  <div className="text-xs text-black/60">Participantes</div>
+                  <div className="text-xs text-white/60">Participantes</div>
                   <div className="text-2xl font-semibold">{fmtNumber(totalParticipantes)}</div>
                 </Card>
                 <Card className="p-3">
-                  <div className="text-xs text-black/60">Pontos totais</div>
+                  <div className="text-xs text-white/60">Pontos totais</div>
                   <div className="text-2xl font-semibold">{fmtNumber(totalPontos)}</div>
                 </Card>
                 <Card className="p-3">
-                  <div className="text-xs text-black/60">Média</div>
+                  <div className="text-xs text-white/60">Média</div>
                   <div className="text-2xl font-semibold">
                     {totalParticipantes ? fmtNumber(totalPontos / totalParticipantes) : "0"}
                   </div>
@@ -298,15 +311,16 @@ function RankingPremium() {
             {[1, 2, 3].map((pos) => {
               const r = top3[pos - 1];
               return (
-                <Card key={pos}>
+                <Card key={pos} className={`relative overflow-hidden ${podiumCardClass(pos)}`}>
+                  <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(212,175,55,.65),transparent)]" />
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold">#{pos}</div>
-                    <Badge>{pos === 1 ? "Top 1" : pos === 2 ? "Top 2" : "Top 3"}</Badge>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${podiumPill(pos)}`}>{pos === 1 ? "Top 1" : pos === 2 ? "Top 2" : "Top 3"}</span>
                   </div>
 
                   <div className="mt-3">
                     <div className="text-lg font-semibold truncate">{r?.participante_nome || "—"}</div>
-                    <div className="text-sm text-black/60 truncate">{r?.grupo_nome || "—"}</div>
+                    <div className="text-sm text-white/60 truncate">{r?.grupo_nome || "—"}</div>
                     <div className="mt-2 text-2xl font-semibold">{fmtNumber(r?.pontos ?? 0)}</div>
                   </div>
                 </Card>
@@ -318,15 +332,15 @@ function RankingPremium() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-semibold">Classificação</div>
-                <div className="text-xs text-black/60">Ordenado por pontos (desc).</div>
+                <div className="text-xs text-white/60">Ordenado por pontos (desc).</div>
               </div>
-              {loading ? <div className="text-xs text-black/60">Carregando…</div> : null}
+              {loading ? <div className="text-xs text-white/60">Carregando…</div> : null}
             </div>
 
             <div className="mt-3 overflow-auto">
               <table className="min-w-[700px] w-full text-sm">
                 <thead>
-                  <tr className="text-left text-black/60">
+                  <tr className="text-left text-white/60">
                     <th className="py-2 pr-3 w-[90px]">Pos.</th>
                     <th className="py-2 pr-3">Participante</th>
                     <th className="py-2 pr-3">Grupo</th>
@@ -336,13 +350,13 @@ function RankingPremium() {
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
-                      <td className="py-6 text-black/60" colSpan={4}>
+                      <td className="py-6 text-white/60" colSpan={4}>
                         Nenhum resultado para os filtros atuais.
                       </td>
                     </tr>
                   ) : (
                     filtered.map((r, idx) => (
-                      <tr key={r.participante_id} className="border-t border-black/10">
+                      <tr key={r.participante_id} className="border-t border-white/10">
                         <td className="py-2 pr-3 font-medium">#{idx + 1}</td>
                         <td className="py-2 pr-3">
                           <div className="font-medium">{r.participante_nome}</div>

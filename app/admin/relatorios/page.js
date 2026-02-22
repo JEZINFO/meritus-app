@@ -210,12 +210,12 @@ export default function AdminRelatorios() {
         <Card className="space-y-3">
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <div className="text-xs text-black/60 mb-1">Programa</div>
-              <div className="rounded-xl border border-black/10 px-3 py-2 text-sm bg-black/5">{programaNome}</div>
+              <div className="text-xs text-white/60 mb-1">Programa</div>
+              <div className="rounded-xl border border-white/10 px-3 py-2 text-sm bg-black/5">{programaNome}</div>
             </div>
 
             <div>
-              <div className="text-xs text-black/60 mb-1">Período</div>
+              <div className="text-xs text-white/60 mb-1">Período</div>
               <Select value={periodoId} onChange={(e) => setPeriodoId(e.target.value)} disabled={!programaId || loading}>
                 {periodos.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -226,7 +226,7 @@ export default function AdminRelatorios() {
             </div>
 
             <div>
-              <div className="text-xs text-black/60 mb-1">Grupo</div>
+              <div className="text-xs text-white/60 mb-1">Grupo</div>
               <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)} disabled={!programaId || loading}>
                 <option value={ALL_GRUPOS}>Todos</option>
                 {grupos.map((g) => (
@@ -240,12 +240,12 @@ export default function AdminRelatorios() {
 
           <div className="grid gap-3 md:grid-cols-3">
             <div className="md:col-span-2">
-              <div className="text-xs text-black/60 mb-1">Buscar critério</div>
+              <div className="text-xs text-white/60 mb-1">Buscar critério</div>
               <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite o nome do critério..." />
             </div>
 
-            <div className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-              <div className="text-xs text-black/60">Resumo</div>
+            <div className="rounded-2xl border border-white/10 bg-[var(--m-surface)] p-4 shadow-sm">
+              <div className="text-xs text-white/60">Resumo</div>
               <div className="mt-1 text-sm">
                 <div className="flex justify-between"><span>Participantes</span><b>{resumo.participantes}</b></div>
                 <div className="flex justify-between"><span>Critérios</span><b>{resumo.criterios}</b></div>
@@ -259,18 +259,18 @@ export default function AdminRelatorios() {
         </Card>
 
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-4 border-b border-black/10 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold">Resumo por critério</div>
-              <div className="text-xs text-black/50">Marcações contam valor ≥ 1 (checkbox).</div>
+              <div className="text-xs text-white/55">Marcações contam valor ≥ 1 (checkbox).</div>
             </div>
-            <div className="text-xs text-black/50">{loading ? "Atualizando..." : `${filtrado.length} itens`}</div>
+            <div className="text-xs text-white/55">{loading ? "Atualizando..." : `${filtrado.length} itens`}</div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-black/5 text-black/60">
+                <tr className="bg-black/5 text-white/60">
                   <th className="text-left px-5 py-3">Critério</th>
                   <th className="text-right px-5 py-3">Pontos base</th>
                   <th className="text-right px-5 py-3">Marcações</th>
@@ -288,7 +288,7 @@ export default function AdminRelatorios() {
                 ))}
                 {filtrado.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-5 py-10 text-center text-black/60">
+                    <td colSpan={4} className="px-5 py-10 text-center text-white/60">
                       {loading ? "Carregando..." : "Sem dados para este filtro."}
                     </td>
                   </tr>

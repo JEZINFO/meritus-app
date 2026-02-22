@@ -2,20 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { --radius: 16px; }
+/* Meritus — Tech Modern (Black & Gold) */
+:root{
+  --radius: 16px;
+
+  --m-bg: #0B0B0D;
+  --m-surface: #121217;
+  --m-surface-2: #171721;
+  --m-border: rgba(255,255,255,.10);
+
+  --m-text: #F5F5F7;
+  --m-muted: rgba(245,245,247,.62);
+
+  --m-gold: #D4AF37;
+  --m-gold-2: #F5D76E;
+  --m-danger: #ff5a5f;
+}
 
 html, body { height: 100%; }
 
-body {
-  @apply bg-white text-neutral-900 antialiased;
+body{
+  background: var(--m-bg);
+  color: var(--m-text);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-* { box-sizing: border-box; }
+*{ box-sizing: border-box; }
 
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.25); }
+::selection{ background: rgba(212,175,55,.28); }
 
-.card { @apply rounded-2xl border border-black/10 bg-white shadow-sm; }
+/* Scrollbar */
+::-webkit-scrollbar{ width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.12); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover{ background: rgba(255,255,255,.20); }
+
+/* Utility class used in some pages */
+.card{
+  background: var(--m-surface);
+  border: 1px solid var(--m-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.35);
+}
