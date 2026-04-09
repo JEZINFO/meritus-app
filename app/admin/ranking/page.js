@@ -8,30 +8,12 @@ import { PageTitle, Card, Button, Input, Select } from "../../../components/admi
 
 const ALL = "__ALL__";
 
-function Badge({ children }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-[color:var(--m-border)] bg-[var(--m-surface-2)] px-2.5 py-1 text-xs font-medium">
-      {children}
-    </span>
-  );
-}
-
 function fmtNumber(n) {
   const v = Number(n ?? 0);
-  return v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-
-
-function podiumCardClass(pos) {
-  if (pos === 1) return "border-[rgba(212,175,55,.35)] bg-[linear-gradient(180deg,rgba(212,175,55,.10),rgba(0,0,0,0))]";
-  if (pos === 2) return "border-white/15 bg-[linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,0))]";
-  return "border-[rgba(205,127,50,.22)] bg-[linear-gradient(180deg,rgba(205,127,50,.10),rgba(0,0,0,0))]";
-}
-
-function podiumPill(pos) {
-  if (pos === 1) return "bg-[rgba(212,175,55,.16)] text-[var(--m-gold)] border border-[rgba(212,175,55,.30)]";
-  if (pos === 2) return "bg-white/10 text-white/80 border border-white/15";
-  return "bg-[rgba(205,127,50,.14)] text-white/80 border border-[rgba(205,127,50,.22)]";
+  return v.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
 }
 
 function downloadCsv(filename, rows) {
@@ -40,15 +22,23 @@ function downloadCsv(filename, rows) {
     if (/[",;\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
+
   const csv = rows.map((r) => r.map(esc).join(";")).join("\n") + "\n";
-  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+
+  const blob = new Blob(["\ufeff" + csv], {
+    type: "text/csv;charset=utf-8",
+  });
+
   const url = URL.createObjectURL(blob);
+
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+
   document.body.appendChild(a);
   a.click();
   a.remove();
+
   URL.revokeObjectURL(url);
 }
 
@@ -63,7 +53,7 @@ export default function Page() {
 function RankingPremium() {
   const { programaId } = useProgram();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
 
   const [grupos, setGrupos] = useState([]);
@@ -77,44 +67,35 @@ function RankingPremium() {
 
   useEffect(() => {
     let alive = true;
+
     async function loadBase() {
       if (!programaId) return;
 
       setLoading(true);
-      setErro("");
 
-      const { data: gData, error: gErr } = await supabase
+      const { data: gData } = await supabase
         .from("meritus_grupos")
-        .select("id, nome, ativo")
+        .select("id,nome")
         .eq("programa_id", programaId)
-        .order("nome", { ascending: true });
+        .eq("ativo", true)
+        .order("nome");
 
-      if (!alive) return;
-      if (gErr) {
-        setErro(gErr.message || "Erro ao carregar grupos");
-        setLoading(false);
-        return;
-      }
-
-      const { data: pData, error: pErr } = await supabase
+      const { data: pData } = await supabase
         .from("meritus_periodos")
-        .select("id, rotulo, inicio, fim, status")
+        .select("id,rotulo,status")
         .eq("programa_id", programaId)
         .order("inicio", { ascending: false });
 
       if (!alive) return;
-      if (pErr) {
-        setErro(pErr.message || "Erro ao carregar períodos");
-        setLoading(false);
-        return;
-      }
 
-      setGrupos(Array.isArray(gData) ? gData : []);
-      setPeriodos(Array.isArray(pData) ? pData : []);
+      setGrupos(gData || []);
+      setPeriodos(pData || []);
+
       setLoading(false);
     }
 
     loadBase();
+
     return () => {
       alive = false;
     };
@@ -129,72 +110,61 @@ function RankingPremium() {
       setLoading(true);
       setErro("");
 
-      let partsQuery = supabase
-        .from("meritus_participantes")
-        .select("id, nome, ativo, grupo_id")
-        .eq("programa_id", programaId)
-        .eq("ativo", true)
-        .order("nome", { ascending: true });
+      const { data: prog } = await supabase
+        .from("meritus_programas")
+        .select("organizacao_id")
+        .eq("id", programaId)
+        .single();
 
-      if (grupoId !== ALL) partsQuery = partsQuery.eq("grupo_id", grupoId);
+      const { data: org } = await supabase
+        .from("meritus_organizacoes")
+        .select("codigo")
+        .eq("id", prog.organizacao_id)
+        .single();
 
-      const { data: parts, error: partsErr } = await partsQuery;
+      const codigo = org.codigo;
+
+      const { data, error } = await supabase.rpc("public_ranking", {
+        p_codigo: codigo,
+        p_programa_id: programaId,
+        p_periodo_id: periodoId === ALL ? null : periodoId,
+        p_grupo_id: null,
+      });
+
       if (!alive) return;
-      if (partsErr) {
-        setErro(partsErr.message || "Erro ao carregar participantes");
-        setLoading(false);
-        return;
-      }
 
-      const partList = Array.isArray(parts) ? parts : [];
-      const partIds = partList.map((p) => p.id);
-
-      if (partIds.length === 0) {
+      if (error) {
+        setErro(error.message);
         setRows([]);
         setLoading(false);
         return;
       }
 
-      let lQuery = supabase
-        .from("meritus_lancamentos")
-        .select("participante_id, periodo_id, pontos_calculados")
-        .eq("programa_id", programaId)
-        .in("participante_id", partIds);
+      const ranked = (data || []).map((r, index) => ({
+        posicao: index + 1,
+        participante_id: r.participante_id,
+        participante_nome: r.participante_nome,
+        grupo_nome: r.grupo_nome,
+        pontos: Number(r.pontos ?? 0),
+      }));
 
-      if (periodoId !== ALL) lQuery = lQuery.eq("periodo_id", periodoId);
+      let finalRows = ranked;
 
-      const { data: lancs, error: lErr } = await lQuery;
-      if (!alive) return;
-      if (lErr) {
-        setErro(lErr.message || "Erro ao carregar lançamentos");
-        setLoading(false);
-        return;
+      if (grupoId !== ALL) {
+        const grupoSelecionado = grupos.find((g) => g.id === grupoId);
+        if (grupoSelecionado) {
+          finalRows = ranked.filter(
+            (r) => r.grupo_nome === grupoSelecionado.nome
+          );
+        }
       }
 
-      const pontosPorPart = new Map();
-      (Array.isArray(lancs) ? lancs : []).forEach((l) => {
-        const k = l.participante_id;
-        const cur = Number(pontosPorPart.get(k) ?? 0);
-        pontosPorPart.set(k, cur + Number(l.pontos_calculados ?? 0));
-      });
-
-      const gruposMap = new Map((Array.isArray(grupos) ? grupos : []).map((g) => [g.id, g.nome]));
-
-      const computed = partList
-        .map((p) => ({
-          participante_id: p.id,
-          participante_nome: p.nome,
-          grupo_id: p.grupo_id,
-          grupo_nome: gruposMap.get(p.grupo_id) || "—",
-          pontos: Number(pontosPorPart.get(p.id) ?? 0),
-        }))
-        .sort((a, b) => b.pontos - a.pontos || a.participante_nome.localeCompare(b.participante_nome));
-
-      setRows(computed);
+      setRows(finalRows);
       setLoading(false);
     }
 
     loadRanking();
+
     return () => {
       alive = false;
     };
@@ -202,176 +172,105 @@ function RankingPremium() {
 
   const filtered = useMemo(() => {
     const q = busca.trim().toLowerCase();
+
     if (!q) return rows;
+
     return rows.filter(
-      (r) => r.participante_nome.toLowerCase().includes(q) || r.grupo_nome.toLowerCase().includes(q)
+      (r) =>
+        r.participante_nome.toLowerCase().includes(q) ||
+        r.grupo_nome.toLowerCase().includes(q)
     );
   }, [rows, busca]);
 
-  const top3 = filtered.slice(0, 3);
-  const totalPontos = useMemo(() => filtered.reduce((acc, r) => acc + Number(r.pontos || 0), 0), [filtered]);
-  const totalParticipantes = filtered.length;
-
   function exportarCsv() {
-    const now = new Date();
-    const stamp =
-      now.getFullYear() +
-      "-" +
-      String(now.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(now.getDate()).padStart(2, "0") +
-      "_" +
-      String(now.getHours()).padStart(2, "0") +
-      String(now.getMinutes()).padStart(2, "0");
-
     const header = ["Posição", "Participante", "Grupo", "Pontos"];
-    const body = filtered.map((r, idx) => [idx + 1, r.participante_nome, r.grupo_nome, fmtNumber(r.pontos)]);
-    downloadCsv(`meritus_ranking_${stamp}.csv`, [header, ...body]);
+
+    const body = filtered.map((r) => [
+      r.posicao,
+      r.participante_nome,
+      r.grupo_nome,
+      fmtNumber(r.pontos),
+    ]);
+
+    downloadCsv("ranking_meritus.csv", [header, ...body]);
   }
 
   return (
     <div className="space-y-4">
-      <PageTitle title="Ranking" subtitle="Resumo premium de pontuação por participante (com filtros e exportação)." />
+      <PageTitle
+        title="Ranking"
+        subtitle="Resumo de pontuação por participante"
+      />
 
-      {!programaId && (
-        <Card>
-          <div className="p-4">
-            <div className="text-sm text-white/60">Selecione um programa no topo para visualizar o ranking.</div>
-          </div>
-        </Card>
-      )}
+      <Card>
+        <div className="grid md:grid-cols-3 gap-3">
 
-      {programaId && (
-        <>
-          <Card>
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                  <div>
-                    <div className="text-xs font-medium text-white/60 mb-1">Grupo</div>
-                    <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
-                      <option value={ALL}>Todos</option>
-                      {(grupos || [])
-                        .filter((g) => g.ativo)
-                        .map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.nome}
-                          </option>
-                        ))}
-                    </Select>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-medium text-white/60 mb-1">Período</div>
-                    <Select value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
-                      <option value={ALL}>Todos</option>
-                      {(periodos || []).map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.rotulo} ({p.status})
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-medium text-white/60 mb-1">Buscar</div>
-                    <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome ou grupo..." />
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button onClick={exportarCsv} variant="secondary">
-                    Exportar CSV
-                  </Button>
-                </div>
-              </div>
-
-              {erro ? <div className="text-sm text-[var(--m-danger)]">{erro}</div> : null}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Card className="p-3">
-                  <div className="text-xs text-white/60">Participantes</div>
-                  <div className="text-2xl font-semibold">{fmtNumber(totalParticipantes)}</div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-xs text-white/60">Pontos totais</div>
-                  <div className="text-2xl font-semibold">{fmtNumber(totalPontos)}</div>
-                </Card>
-                <Card className="p-3">
-                  <div className="text-xs text-white/60">Média</div>
-                  <div className="text-2xl font-semibold">
-                    {totalParticipantes ? fmtNumber(totalPontos / totalParticipantes) : "0"}
-                  </div>
-                </Card>
-              </div>
-            </div>
-          </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {[1, 2, 3].map((pos) => {
-              const r = top3[pos - 1];
-              return (
-                <Card key={pos} className={`relative overflow-hidden ${podiumCardClass(pos)}`}>
-                  <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(212,175,55,.65),transparent)]" />
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold">#{pos}</div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${podiumPill(pos)}`}>{pos === 1 ? "Top 1" : pos === 2 ? "Top 2" : "Top 3"}</span>
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="text-lg font-semibold truncate">{r?.participante_nome || "—"}</div>
-                    <div className="text-sm text-white/60 truncate">{r?.grupo_nome || "—"}</div>
-                    <div className="mt-2 text-2xl font-semibold">{fmtNumber(r?.pontos ?? 0)}</div>
-                  </div>
-                </Card>
-              );
-            })}
+          <div>
+            <div className="text-xs text-white/60 mb-1">Grupo</div>
+            <Select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
+              <option value={ALL}>Todos</option>
+              {grupos.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.nome}
+                </option>
+              ))}
+            </Select>
           </div>
 
-          <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold">Classificação</div>
-                <div className="text-xs text-white/60">Ordenado por pontos (desc).</div>
-              </div>
-              {loading ? <div className="text-xs text-white/60">Carregando…</div> : null}
-            </div>
+          <div>
+            <div className="text-xs text-white/60 mb-1">Período</div>
+            <Select value={periodoId} onChange={(e) => setPeriodoId(e.target.value)}>
+              <option value={ALL}>Todos</option>
+              {periodos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.rotulo} ({p.status})
+                </option>
+              ))}
+            </Select>
+          </div>
 
-            <div className="mt-3 overflow-auto">
-              <table className="min-w-[700px] w-full text-sm">
-                <thead>
-                  <tr className="text-left text-white/60">
-                    <th className="py-2 pr-3 w-[90px]">Pos.</th>
-                    <th className="py-2 pr-3">Participante</th>
-                    <th className="py-2 pr-3">Grupo</th>
-                    <th className="py-2 pr-3 w-[140px] text-right">Pontos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td className="py-6 text-white/60" colSpan={4}>
-                        Nenhum resultado para os filtros atuais.
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map((r, idx) => (
-                      <tr key={r.participante_id} className="border-t border-white/10">
-                        <td className="py-2 pr-3 font-medium">#{idx + 1}</td>
-                        <td className="py-2 pr-3">
-                          <div className="font-medium">{r.participante_nome}</div>
-                        </td>
-                        <td className="py-2 pr-3">{r.grupo_nome}</td>
-                        <td className="py-2 pr-3 text-right font-semibold">{fmtNumber(r.pontos)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </>
-      )}
+          <div>
+            <div className="text-xs text-white/60 mb-1">Buscar</div>
+            <Input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Nome ou grupo"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <Button variant="secondary" onClick={exportarCsv}>
+            Exportar CSV
+          </Button>
+        </div>
+      </Card>
+
+      <Card>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-white/60">
+              <th className="py-2">Pos.</th>
+              <th>Participante</th>
+              <th>Grupo</th>
+              <th className="text-right">Pontos</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filtered.map((r) => (
+              <tr key={r.participante_id} className="border-t border-white/10">
+                <td className="py-2">#{r.posicao}</td>
+                <td>{r.participante_nome}</td>
+                <td>{r.grupo_nome}</td>
+                <td className="text-right font-semibold">
+                  {fmtNumber(r.pontos)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
     </div>
   );
 }
