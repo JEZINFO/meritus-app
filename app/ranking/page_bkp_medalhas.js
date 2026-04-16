@@ -39,13 +39,13 @@ function norm(v) {
 }
 
 function TopBadge({ rank }) {
-  if (rank === 1) return <Badge tone="white"> #1</Badge>;
-  if (rank === 2) return <Badge tone="white"> #2</Badge>;
-  if (rank === 3) return <Badge tone="white"> #3</Badge>;
+  if (rank === 1) return <Badge tone="gold">🥇 #1</Badge>;
+  if (rank === 2) return <Badge tone="gold">🥇 #2</Badge>;
+  if (rank === 3) return <Badge tone="gold">🥇 #3</Badge>;
 
   // Medalha para top 30
-  if (rank <= 100) {
-    return <Badge tone="white"> #{rank}</Badge>;
+  if (rank <= 30) {
+    return <Badge tone="gold">🏅 #{rank}</Badge>;
   }
 
   return (
